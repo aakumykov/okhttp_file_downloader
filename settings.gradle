@@ -11,7 +11,9 @@ dependencyResolutionManagement {
         google()
         mavenLocal()
         mavenCentral()
+        maven { url 'https://jitpack.io' }
     }
 }
 rootProject.name = "okhttp_file_downloader"
 include ':okhttp_file_downloader'
+include ':app'
