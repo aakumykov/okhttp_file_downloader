@@ -2,7 +2,7 @@ package com.github.aakumykov.okhttp_file_downloader.exceptions;
 
 import okhttp3.Response;
 
-public class BadResponseException extends Exception {
+public class BadResponseException extends OkHttpFileDownloaderException {
 
     private final String mRequestURL;
 
