@@ -13,8 +13,9 @@ import okhttp3.ResponseBody;
 
 public class OkHttpFileDownloader implements AutoCloseable {
 
-    private static final String TEMP_PREFIX = "temp_";
-    private static final String TEMP_SUFFIX = "_temp";
+    private static final String TAG = OkHttpFileDownloader.class.getSimpleName();
+    private static final String TEMP_PREFIX = TAG+"_";
+    private static final String TEMP_SUFFIX = "_"+TAG;
 
     private final OkHttpClient mOkHttpClient;
     private final OkHttpFileWriter mOkHttpFileWriter;
