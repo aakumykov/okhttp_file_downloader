@@ -15,5 +15,5 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "okhttp_file_downloader"
-include ':okhttp_file_downloader'
+include ':lib'
 include ':app'
