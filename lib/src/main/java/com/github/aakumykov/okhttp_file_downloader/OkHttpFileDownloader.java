@@ -1,5 +1,7 @@
 package com.github.aakumykov.okhttp_file_downloader;
 
+import androidx.annotation.Nullable;
+
 import com.github.aakumykov.okhttp_file_downloader.exceptions.BadResponseException;
 import com.github.aakumykov.okhttp_file_downloader.exceptions.EmptyBodyException;
 
@@ -25,16 +27,19 @@ public class OkHttpFileDownloader implements AutoCloseable {
             throws IOException, BadResponseException, EmptyBodyException
     {
         final File tempFile = File.createTempFile(TEMP_PREFIX, TEMP_SUFFIX);
-        downloadFileTo(sourceURL, tempFile);
+        downloadFileTo(sourceURL, tempFile, null);
         return tempFile;
     }
 
 
-    public static void downloadFileTo(String sourceURL, File targetFile)
+    public static void downloadFileTo(String sourceURL, File targetFile, @Nullable ProgressCallback progressCallback)
             throws IOException, BadResponseException, EmptyBodyException
     {
         final OkHttpClient okHttpClient = new OkHttpClient();
         final OkHttpFileWriter okHttpFileWriter = new OkHttpFileWriter(targetFile);
+
+        if (null != progressCallback)
+            okHttpFileWriter.setProgressCallback(progressCallback);
 
         new OkHttpFileDownloader(okHttpClient, okHttpFileWriter).download(sourceURL);
     }
