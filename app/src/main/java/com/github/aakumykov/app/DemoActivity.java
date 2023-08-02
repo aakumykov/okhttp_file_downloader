@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.github.aakumykov.app.databinding.ActivityDemoBinding;
 import com.github.aakumykov.okhttp_file_downloader.OkHttpFileDownloader;
+import com.github.aakumykov.okhttp_file_downloader.ProgressCallback;
 
 import java.io.File;
 
@@ -70,8 +71,16 @@ public class DemoActivity extends AppCompatActivity {
         Single.create(new SingleOnSubscribe<File>() {
             @Override
             public void subscribe(SingleEmitter<File> emitter) throws Exception {
+
                 final File targetFile = File.createTempFile("image_", "_file", getCacheDir());
-                OkHttpFileDownloader.downloadFileTo(imageUrl, targetFile);
+
+                OkHttpFileDownloader.downloadFileTo(imageUrl, targetFile, new ProgressCallback() {
+                    @Override
+                    public void onProgress(double progressPercent) {
+                        Log.d(TAG, "onProgress() called with: progress = [" + progressPercent + "]");
+                    }
+                });
+
                 emitter.onSuccess(targetFile);
             }
         })
