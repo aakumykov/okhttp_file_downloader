@@ -1,7 +1,5 @@
 package com.github.aakumykov.okhttp_file_downloader;
 
-import android.content.Context;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -20,61 +18,31 @@ import okhttp3.ResponseBody;
 public class OkHttpFileDownloader implements AutoCloseable {
 
     private static final String TAG = OkHttpFileDownloader.class.getSimpleName();
-    private static final String TEMP_PREFIX = TAG+"_downloaded";
-    private static final String TEMP_SUFFIX = ".file";
-
     private final OkHttpClient mOkHttpClient;
     private final OkHttpFileWriter mOkHttpFileWriter;
-
     @Nullable private Call mCall;
 
 
-    public static OkHttpFileDownloader createDefault(Context context) throws IOException {
-        return create(tempFileName(context));
-    }
-
-    public static OkHttpFileDownloader create(@NonNull String targetFilePath) throws IOException {
-        return create(new File(targetFilePath));
-    }
-
     public static OkHttpFileDownloader create(@NonNull File targetFile) throws IOException {
+        return createReal(targetFile, null);
+    }
+
+    /*public static OkHttpFileDownloader create(@NonNull File targetFile,
+                                              @NonNull ProgressCallback progressCallback) throws IOException {
+        return createReal(targetFile, progressCallback);
+    }*/
+
+    private static OkHttpFileDownloader createReal(@NonNull File targetFile,
+                                                   @Nullable ProgressCallback progressCallback) throws IOException {
         final OkHttpClient okHttpClient = new OkHttpClient();
         final OkHttpFileWriter okHttpFileWriter = new OkHttpFileWriter(targetFile);
+        if (null != progressCallback)
+            okHttpFileWriter.setProgressCallback(progressCallback);
         return new OkHttpFileDownloader(okHttpClient, okHttpFileWriter);
     }
 
-    private static String tempFileName(Context context) {
-        return new File(context.getCacheDir(), TEMP_PREFIX + TEMP_SUFFIX)
-                .getAbsolutePath();
-    }
-
-    public static File downloadFile(String sourceURL)
-            throws IOException, BadResponseException, EmptyBodyException
-    {
-        final File tempFile = File.createTempFile(TEMP_PREFIX, TEMP_SUFFIX);
-        downloadFileTo(sourceURL, tempFile, null);
-        return tempFile;
-    }
-
-
-    public static OkHttpFileDownloader downloadFileTo(String sourceURL, File targetFile, @Nullable ProgressCallback progressCallback)
-            throws IOException, BadResponseException, EmptyBodyException
-    {
-        final OkHttpClient okHttpClient = new OkHttpClient();
-        final OkHttpFileWriter okHttpFileWriter = new OkHttpFileWriter(targetFile);
-
-        if (null != progressCallback)
-            okHttpFileWriter.setProgressCallback(progressCallback);
-
-        OkHttpFileDownloader okHttpFileDownloader = new OkHttpFileDownloader(okHttpClient, okHttpFileWriter);
-
-        okHttpFileDownloader.download(sourceURL);
-
-        return okHttpFileDownloader;
-    }
-
-
-    public OkHttpFileDownloader(OkHttpClient okHttpClient, OkHttpFileWriter okHttpFileWriter) {
+    public OkHttpFileDownloader(OkHttpClient okHttpClient,
+                                OkHttpFileWriter okHttpFileWriter) {
         mOkHttpClient = okHttpClient;
         mOkHttpFileWriter = okHttpFileWriter;
     }

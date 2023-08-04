@@ -92,13 +92,14 @@ public class DemoActivity extends AppCompatActivity {
 
                 final File targetFile = new File(getCacheDir(), "downloaded.file");
 
-                mOkHttpFileDownloader = OkHttpFileDownloader.create(targetFile.getAbsolutePath());
+                mOkHttpFileDownloader = OkHttpFileDownloader.create(targetFile);
 
                 mOkHttpFileDownloader.setProgressCallback(new ProgressCallback() {
                     @Override
-                    public void onProgress(double progressPercent) {
-                        emitter.onNext(progressPercent);
-                        Log.d(TAG, "onProgress: "+progressPercent);
+                    public void onProgress(long bytes, long total, float percent) {
+                        Log.d(TAG, "onProgress() called with: bytes = [" + bytes + "], total = [" + total + "], percent = [" + percent + "]");
+                        mBinding.progressBar.setProgress((int) (percent * 100f));
+                        mBinding.loadedBytesView.setText(ByteSizeConverter.humanReadableByteCountSI(bytes));
                     }
                 });
 
@@ -116,7 +117,7 @@ public class DemoActivity extends AppCompatActivity {
 
                                     @Override
                                     public void onNext(Double aDouble) {
-                                        mBinding.progressBar.setProgress((int) (aDouble * 100.0));
+//                                        mBinding.progressBar.setProgress((int) (aDouble * 100.0));
                                     }
 
                                     @Override
@@ -211,19 +212,19 @@ public class DemoActivity extends AppCompatActivity {
 
     private void displayIdleState() {
         hideError();
-        hideProgressBar();
+        hideProgressWidgets();
         hideImage();
     }
 
     private void displayBusyState() {
         hideError();
-        showProgressBar();
+        showProgressWidgets();
         hideImage();
     }
 
     private void displaySuccessState(File imageFile) {
         hideError();
-        hideProgressBar();
+        hideProgressWidgets();
         showImage(imageFile);
     }
 
@@ -234,7 +235,7 @@ public class DemoActivity extends AppCompatActivity {
 
     private void displayErrorState(String errorMsg) {
         showError(errorMsg);
-        hideProgressBar();
+        hideProgressWidgets();
         hideImage();
     }
 
@@ -246,11 +247,13 @@ public class DemoActivity extends AppCompatActivity {
         view.setVisibility(View.GONE);
     }
 
-    private void showProgressBar() {
+    private void showProgressWidgets() {
         show(mBinding.progressBar);
+        show(mBinding.loadedBytesView);
     }
-    private void hideProgressBar() {
+    private void hideProgressWidgets() {
         hide(mBinding.progressBar);
+        hide(mBinding.loadedBytesView);
     }
 
     private void showImage(File imageFile) {

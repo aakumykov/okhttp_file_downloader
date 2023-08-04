@@ -1,11 +1,9 @@
 package com.github.aakumykov.okhttp_file_downloader;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 
 import okhttp3.ResponseBody;
@@ -18,17 +16,11 @@ public class OkHttpFileWriter implements AutoCloseable {
     private final BufferedSink mBufferedSink;
     @Nullable private ProgressCallback mProgressCallback;
 
-    public OkHttpFileWriter(@NonNull String outputFilePath) throws IOException {
-        mBufferedSink = Okio.buffer(Okio.sink(new File(outputFilePath)));
-    }
 
     public OkHttpFileWriter(File outputFile) throws FileNotFoundException {
         mBufferedSink = Okio.buffer(Okio.sink(outputFile));
     }
 
-    public OkHttpFileWriter(FileOutputStream fileOutputStream) {
-        mBufferedSink = Okio.buffer(Okio.sink(fileOutputStream));
-    }
 
     public void setProgressCallback(@Nullable ProgressCallback progressCallback) {
         this.mProgressCallback = progressCallback;
@@ -36,22 +28,22 @@ public class OkHttpFileWriter implements AutoCloseable {
 
     public void write(ResponseBody responseBody) throws IOException {
 
-//        mBufferedSink.writeAll(responseBody.source());
-
         try (BufferedSource bufferedSource = responseBody.source()) {
 
-            byte[] dataBuffer = new byte[1024];
-            int readBytes;
-            long totalBytes = 0;
+            final byte[] dataBuffer = new byte[1024 * 1024];
+            final long totalBytes = responseBody.contentLength();
+            long loadedBytes = 0;
+            int readedBytes;
 
-            while ((readBytes = bufferedSource.read(dataBuffer)) != -1) {
-                totalBytes += readBytes;
-                mBufferedSink.write(dataBuffer, 0, readBytes);
+            while ((readedBytes = bufferedSource.read(dataBuffer)) != -1) {
+                loadedBytes += readedBytes;
+                mBufferedSink.write(dataBuffer, 0, readedBytes);
 
-                if (null != mProgressCallback) {
-                    double progress = Math.round(1f * totalBytes / responseBody.contentLength() * 100.0) / 100.0;
-                    mProgressCallback.onProgress(progress);
-                }
+                if (null != mProgressCallback)
+                    mProgressCallback.onProgress(
+                            loadedBytes,
+                            totalBytes,
+                            Math.round(1f * loadedBytes / totalBytes * 100.0));
             }
 
             mBufferedSink.close();
