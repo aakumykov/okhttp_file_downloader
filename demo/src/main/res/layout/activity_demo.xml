@@ -59,6 +59,13 @@
             app:srcCompat="@drawable/ic_baseline_file_download_off_24" />
     </LinearLayout>
 
+    <Button
+        android:id="@+id/downloadWithWorkerButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="0"
+        android:text="Скачать через Worker" />
+
     <ProgressBar
         android:id="@+id/progressBar"
         style="?android:attr/progressBarStyleHorizontal"

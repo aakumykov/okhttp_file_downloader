@@ -15,12 +15,20 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.work.Data;
+import androidx.work.ExistingWorkPolicy;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.Operation;
+import androidx.work.WorkInfo;
+import androidx.work.WorkManager;
 
+import com.github.aakumykov.enum_utils.EnumUtils;
 import com.github.aakumykov.okhttp_file_downloader.OkHttpFileDownloader;
 import com.github.aakumykov.okhttp_file_downloader.ProgressCallback;
 import com.github.aakumykov.okhttp_file_downloader_demo.databinding.ActivityDemoBinding;
 
 import java.io.File;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.reactivex.Observable;
@@ -55,7 +63,8 @@ public class DemoActivity extends AppCompatActivity {
         editTextValuePersistingHelper.addFieldToPersistText(KEY_URL, mBinding.urlInput);
 
         mBinding.clearInputButton.setOnClickListener(v -> clearInputField());
-        mBinding.downloadButton.setOnClickListener(v -> downloadFile());
+        mBinding.downloadButton.setOnClickListener(v -> downloadFile(false));
+        mBinding.downloadWithWorkerButton.setOnClickListener(v -> downloadFile(true));
         mBinding.cancelDownloadButton.setOnClickListener(v -> cancelDownloading());
 
         mBinding.clipboardButton.setOnClickListener(v -> {
@@ -86,8 +95,7 @@ public class DemoActivity extends AppCompatActivity {
         mCompositeDisposable.dispose();
     }
 
-
-    private void downloadFile() {
+    private void downloadFile(boolean withWorker) {
 
         if (mDownloadingIsActive.get()) {
             Toast.makeText(this, "Скачивание уже идёт", Toast.LENGTH_SHORT).show();
@@ -100,9 +108,87 @@ public class DemoActivity extends AppCompatActivity {
             return;
         }
 
+        if (withWorker)
+            downloadWithWorker();
+        else {
 //        downloadFileOld(sourceUrl);
-        downloadFileNew(sourceUrl);
+            downloadFileNew(sourceUrl);
 //        downloadFileNew2(sourceUrl);
+        }
+    }
+
+
+    private void downloadWithWorker() {
+
+        final String sourceURL = mBinding.urlInput.getText().toString();
+
+        final Data inputData = new Data.Builder()
+                .putString(FileDownloadingWorker.SOURCE_URL, sourceURL)
+                .build();
+
+        OneTimeWorkRequest oneTimeWorkRequest =
+                new OneTimeWorkRequest.Builder(FileDownloadingWorker.class)
+                    .setInputData(inputData)
+                    .build();
+
+        final UUID workId = oneTimeWorkRequest.getId();
+
+        final WorkManager wm = WorkManager.getInstance(this);
+
+        wm.enqueueUniqueWork(
+                sourceURL,
+                ExistingWorkPolicy.KEEP,
+                oneTimeWorkRequest)
+                /*.getState().observe(this, new androidx.lifecycle.Observer<Operation.State>() {
+                    @Override
+                    public void onChanged(Operation.State state) {
+                        switch (workStateToEnum(state)) {
+                            case SUCCESS:
+                                break;
+                            case PROGRESS:
+                                break;
+                            case ERROR:
+                                break;
+                            default:
+                                EnumUtils
+                        }
+                    }
+                })*/;
+
+        wm.getWorkInfoByIdLiveData(workId).observe(this, new androidx.lifecycle.Observer<WorkInfo>() {
+            @Override
+            public void onChanged(WorkInfo workInfo) {
+
+                final Data progressData = workInfo.getProgress();
+                final float percent = progressData.getFloat(FileDownloadingWorker.PROGRESS, 0f);
+                mBinding.progressBar.setProgress(floatPercentsToProgress(percent));
+
+                final WorkInfo.State workInfoState = workInfo.getState();
+                switch (workInfoState) {
+                    case ENQUEUED:
+                    case BLOCKED:
+                    case CANCELLED:
+                    case SUCCEEDED:
+                        displayIdleState();
+                        break;
+                    case RUNNING:
+                        displayBusyState();
+                        break;
+                    case FAILED:
+                        final Data errorData = workInfo.getOutputData();
+                        final String errorMessage = errorData.getString(FileDownloadingWorker.ERROR_MESSAGE);
+                        displayErrorState(errorMessage);
+                        Log.e(TAG, "Ошибка скачивания файла:"+errorMessage);
+                        break;
+                    default:
+                        EnumUtils.throwUnknownValue(workInfoState);
+                }
+            }
+        });
+    }
+
+    private WorkState workStateToEnum(@NonNull final Operation.State state) {
+        return null;
     }
 
 
@@ -214,7 +300,7 @@ public class DemoActivity extends AppCompatActivity {
 
                     @Override
                     public void onNext(DownloadingProgress downloadingProgress) {
-                        mBinding.progressBar.setProgress((int) (downloadingProgress.percent * 100.0));
+                        mBinding.progressBar.setProgress(floatPercentsToProgress(downloadingProgress.percent));
                         mBinding.loadedBytesView.setText(ByteSizeConverter.humanReadableByteCountSI(downloadingProgress.loadedBytes));
                     }
 
@@ -279,7 +365,7 @@ public class DemoActivity extends AppCompatActivity {
 
                     @Override
                     public void onNext(Float percent) {
-                        mBinding.progressBar.setProgress(Math.round(percent));
+                        mBinding.progressBar.setProgress(floatPercentsToProgress(percent));
                         mBinding.loadedBytesView.setText(percent +"%");
                     }
 
@@ -380,4 +466,9 @@ public class DemoActivity extends AppCompatActivity {
         return (null != clipData) ? clipData.getItemAt(0).getText() : "";
     }
 
+    private enum WorkState { PROGRESS, SUCCESS, ERROR }
+
+    private int floatPercentsToProgress(float percent) {
+        return (int) (percent * 100.0);
+    }
 }

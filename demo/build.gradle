@@ -47,4 +47,5 @@ dependencies {
     implementation "androidx.work:work-runtime:2.8.1"
 
     implementation 'com.github.aakumykov:exception_utils:0.4'
+    implementation 'com.github.aakumykov:enum_utils:0.1'
 }
