@@ -30,10 +30,12 @@ public class EditTextValuePersistingHelper {
 
         TextChangeWatcher textChangeWatcher = new TextChangeWatcher() {
             @Override
-            public void afterTextChanged(Editable s) {
+            public void afterTextChanged(@NonNull Editable s) {
                 mSharedPreferences.edit().putString(key, s.toString()).apply();
             }
         };
+
+        editText.addTextChangedListener(textChangeWatcher);
 
         mKeyToInputMap.put(editText, textChangeWatcher);
     }
