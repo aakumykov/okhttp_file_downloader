@@ -54,7 +54,7 @@ public class DemoActivity extends AppCompatActivity {
         editTextValuePersistingHelper.addFieldToPersistText(KEY_URL, mBinding.urlInput);
 
         mBinding.clearInputButton.setOnClickListener(v -> clearInputField());
-        mBinding.downloadButton.setOnClickListener(v -> downloadImage());
+        mBinding.downloadButton.setOnClickListener(v -> downloadFile());
         mBinding.cancelDownloadButton.setOnClickListener(v -> cancelDownloading());
 
         mBinding.clipboardButton.setOnClickListener(v -> {
@@ -86,20 +86,24 @@ public class DemoActivity extends AppCompatActivity {
     }
 
 
-
-    private void downloadImage() {
+    private void downloadFile() {
 
         if (mDownloadingIsActive.get()) {
             Toast.makeText(this, "Скачивание уже идёт", Toast.LENGTH_SHORT).show();
             return;
         }
 
-
-        final String imageUrl = mBinding.urlInput.getText().toString();
-        if (TextUtils.isEmpty(imageUrl.trim())) {
+        final String sourceUrl = mBinding.urlInput.getText().toString();
+        if (TextUtils.isEmpty(sourceUrl.trim())) {
             showError(R.string.ERROR_there_is_no_image_url);
             return;
         }
+
+        downloadFileNew(sourceUrl);
+    }
+
+
+    private void downloadFileOld(final String sourceUrl) {
 
         Observable.create(new ObservableOnSubscribe<Double>() {
             @Override
@@ -125,7 +129,7 @@ public class DemoActivity extends AppCompatActivity {
                     }
                 });
 
-                mOkHttpFileDownloader.download(imageUrl);
+                mOkHttpFileDownloader.download(sourceUrl);
             }
         })
                         .subscribeOn(Schedulers.io())
@@ -155,6 +159,66 @@ public class DemoActivity extends AppCompatActivity {
                                     }
                                 });
     }
+
+
+    private void downloadFileNew(final String sourceUrl) {
+
+        Observable.create(new ObservableOnSubscribe<DownloadingProgress>() {
+            @Override
+            public void subscribe(ObservableEmitter<DownloadingProgress> emitter) throws Exception {
+
+                mDownloadingIsActive.set(true);
+
+                final File targetFile = new File(getCacheDir(), "downloaded.file");
+
+                mOkHttpFileDownloader = OkHttpFileDownloader.create(targetFile);
+
+                mOkHttpFileDownloader.setProgressCallback(new ProgressCallback() {
+                    @Override
+                    public void onProgress(long bytes, long total, float percent) {
+                        Log.d(TAG, "onProgress() called with: bytes = [" + bytes + "], total = [" + total + "], percent = [" + percent + "]");
+                        emitter.onNext(new DownloadingProgress(bytes, total, percent));
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        emitter.onComplete();
+                    }
+                });
+
+                mOkHttpFileDownloader.download(sourceUrl);
+            }
+        })
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+
+                .subscribe(new Observer<DownloadingProgress>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+                        mCompositeDisposable.add(d);
+                        displayBusyState();
+                    }
+
+                    @Override
+                    public void onNext(DownloadingProgress downloadingProgress) {
+                        mBinding.progressBar.setProgress((int) (downloadingProgress.percent));
+                        mBinding.loadedBytesView.setText(ByteSizeConverter.humanReadableByteCountSI(downloadingProgress.loadedBytes));
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        mDownloadingIsActive.set(false);
+                        displayErrorState(e);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        mDownloadingIsActive.set(false);
+                        mBinding.getRoot().postDelayed(() -> displayIdleState(), 1000);
+                    }
+                });
+    }
+
 
     private void displayIdleState() {
         hideError();
