@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
@@ -44,12 +45,17 @@ public class DemoActivity extends AppCompatActivity {
         setContentView(mBinding.getRoot());
 
         mBinding.downloadButton.setOnClickListener(v -> downloadImage());
+        mBinding.cancelDownloadButton.setOnClickListener(v -> cancelDownloading());
 
         mBinding.clipboardButton.setOnClickListener(v -> {
             final String text = clipboardText().toString();
             if (!TextUtils.isEmpty(text))
                 mBinding.urlInput.setText(text);
         });
+    }
+
+    private void cancelDownloading() {
+        Toast.makeText(this, "Ещё не реализовано", Toast.LENGTH_SHORT).show();
     }
 
     @Override
