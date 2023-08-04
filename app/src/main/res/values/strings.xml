@@ -1,4 +1,0 @@
-<resources>
-    <string name="app_name">OkHttpFileDownloader Demo</string>
-    <string name="ERROR_there_is_no_image_url">Нет ссылки для скачивания картинки</string>
-</resources>
