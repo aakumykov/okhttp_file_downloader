@@ -1,5 +1,8 @@
 package com.github.aakumykov.okhttp_file_downloader;
 
+import android.content.Context;
+
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.github.aakumykov.okhttp_file_downloader.exceptions.BadResponseException;
@@ -16,8 +19,8 @@ import okhttp3.ResponseBody;
 public class OkHttpFileDownloader implements AutoCloseable {
 
     private static final String TAG = OkHttpFileDownloader.class.getSimpleName();
-    private static final String TEMP_PREFIX = TAG+"_";
-    private static final String TEMP_SUFFIX = "_"+TAG;
+    private static final String TEMP_PREFIX = TAG+"_downloaded";
+    private static final String TEMP_SUFFIX = ".file";
 
     private final OkHttpClient mOkHttpClient;
     private final OkHttpFileWriter mOkHttpFileWriter;
@@ -25,6 +28,24 @@ public class OkHttpFileDownloader implements AutoCloseable {
     @Nullable private Response mResponse;
     @Nullable private ResponseBody mResponseBody;
 
+    public static OkHttpFileDownloader createDefault(Context context) throws IOException {
+        return create(tempFileName(context));
+    }
+
+    public static OkHttpFileDownloader create(@NonNull String targetFilePath) throws IOException {
+        return create(new File(targetFilePath));
+    }
+
+    public static OkHttpFileDownloader create(@NonNull File targetFile) throws IOException {
+        final OkHttpClient okHttpClient = new OkHttpClient();
+        final OkHttpFileWriter okHttpFileWriter = new OkHttpFileWriter(targetFile);
+        return new OkHttpFileDownloader(okHttpClient, okHttpFileWriter);
+    }
+
+    private static String tempFileName(Context context) {
+        return new File(context.getCacheDir(), TEMP_PREFIX + TEMP_SUFFIX)
+                .getAbsolutePath();
+    }
 
     public static File downloadFile(String sourceURL)
             throws IOException, BadResponseException, EmptyBodyException
@@ -61,12 +82,12 @@ public class OkHttpFileDownloader implements AutoCloseable {
     public void download(String url) throws IOException, BadResponseException, EmptyBodyException {
 
         final Request request = new Request.Builder().url(url).build();
-        final Response response = mOkHttpClient.newCall(request).execute();
+        mResponse = mOkHttpClient.newCall(request).execute();
 
-        if (!response.isSuccessful())
-            throw new BadResponseException(response, url);
+        if (!mResponse.isSuccessful())
+            throw new BadResponseException(mResponse, url);
 
-        final ResponseBody responseBody = response.body();
+        final ResponseBody responseBody = mResponse.body();
 
         if (null == responseBody)
             throw new EmptyBodyException();
@@ -84,5 +105,10 @@ public class OkHttpFileDownloader implements AutoCloseable {
     @Override
     public void close() throws Exception {
         mOkHttpFileWriter.close();
+    }
+
+
+    public void setProgressCallback(@NonNull ProgressCallback progressCallback) {
+        mOkHttpFileWriter.setProgressCallback(progressCallback);
     }
 }

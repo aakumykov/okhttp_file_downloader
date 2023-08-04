@@ -1,5 +1,6 @@
 package com.github.aakumykov.okhttp_file_downloader;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.io.File;
@@ -16,6 +17,10 @@ public class OkHttpFileWriter implements AutoCloseable {
 
     private final BufferedSink mBufferedSink;
     @Nullable private ProgressCallback mProgressCallback;
+
+    public OkHttpFileWriter(@NonNull String outputFilePath) throws IOException {
+        mBufferedSink = Okio.buffer(Okio.sink(new File(outputFilePath)));
+    }
 
     public OkHttpFileWriter(File outputFile) throws FileNotFoundException {
         mBufferedSink = Okio.buffer(Okio.sink(outputFile));

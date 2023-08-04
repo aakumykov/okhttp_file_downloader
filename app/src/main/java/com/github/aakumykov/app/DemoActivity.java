@@ -92,13 +92,17 @@ public class DemoActivity extends AppCompatActivity {
 
                 final File targetFile = new File(getCacheDir(), "downloaded.file");
 
-                mOkHttpFileDownloader = OkHttpFileDownloader.downloadFileTo(imageUrl, targetFile, new ProgressCallback() {
+                mOkHttpFileDownloader = OkHttpFileDownloader.create(targetFile.getAbsolutePath());
+
+                mOkHttpFileDownloader.setProgressCallback(new ProgressCallback() {
                     @Override
                     public void onProgress(double progressPercent) {
                         emitter.onNext(progressPercent);
                         Log.d(TAG, "onProgress: "+progressPercent);
                     }
                 });
+
+                mOkHttpFileDownloader.download(imageUrl);
             }
         })
                         .subscribeOn(Schedulers.io())
