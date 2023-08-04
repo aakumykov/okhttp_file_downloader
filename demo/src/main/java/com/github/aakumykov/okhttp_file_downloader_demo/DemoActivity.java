@@ -214,7 +214,7 @@ public class DemoActivity extends AppCompatActivity {
 
                     @Override
                     public void onNext(DownloadingProgress downloadingProgress) {
-                        mBinding.progressBar.setProgress((int) (downloadingProgress.percent));
+                        mBinding.progressBar.setProgress((int) (downloadingProgress.percent * 100.0));
                         mBinding.loadedBytesView.setText(ByteSizeConverter.humanReadableByteCountSI(downloadingProgress.loadedBytes));
                     }
 
