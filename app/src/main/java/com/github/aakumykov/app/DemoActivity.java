@@ -20,10 +20,10 @@ import com.github.aakumykov.okhttp_file_downloader.ProgressCallback;
 
 import java.io.File;
 
-import io.reactivex.Single;
-import io.reactivex.SingleEmitter;
-import io.reactivex.SingleObserver;
-import io.reactivex.SingleOnSubscribe;
+import io.reactivex.Observable;
+import io.reactivex.ObservableEmitter;
+import io.reactivex.ObservableOnSubscribe;
+import io.reactivex.Observer;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
@@ -68,7 +68,84 @@ public class DemoActivity extends AppCompatActivity {
             return;
         }
 
-        Single.create(new SingleOnSubscribe<File>() {
+        Observable.create(new ObservableOnSubscribe<Double>() {
+            @Override
+            public void subscribe(ObservableEmitter<Double> emitter) throws Exception {
+                final File targetFile = File.createTempFile("image_", "_file", getCacheDir());
+                OkHttpFileDownloader.downloadFileTo(imageUrl, targetFile, new ProgressCallback() {
+                    @Override
+                    public void onProgress(double progressPercent) {
+                        emitter.onNext(progressPercent);
+                        Log.d(TAG, "onProgress: "+progressPercent);
+                    }
+                });
+            }
+        })
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                                .subscribe(new Observer<Double>() {
+                                    @Override
+                                    public void onSubscribe(Disposable d) {
+                                        mCompositeDisposable.add(d);
+                                        displayBusyState();
+                                    }
+
+                                    @Override
+                                    public void onNext(Double aDouble) {
+                                        mBinding.progressBar.setProgress((int) (aDouble * 100.0));
+                                    }
+
+                                    @Override
+                                    public void onError(Throwable e) {
+                                        displayErrorState(e);
+                                    }
+
+                                    @Override
+                                    public void onComplete() {
+                                        displayIdleState();
+                                    }
+                                });
+
+        /*Flowable.create(new FlowableOnSubscribe<Double>() {
+            @Override
+            public void subscribe(FlowableEmitter<Double> emitter) throws Exception {
+
+                final File targetFile = File.createTempFile("image_", "_file", getCacheDir());
+
+                OkHttpFileDownloader.downloadFileTo(imageUrl, targetFile, new ProgressCallback() {
+                    @Override
+                    public void onProgress(double progressPercent) {
+                        emitter.onNext(progressPercent);
+                        Log.d(TAG, "onProgress: "+progressPercent);
+                    }
+                });
+            }
+        }, BackpressureStrategy.LATEST)
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                                .subscribe(new Subscriber<Double>() {
+                                    @Override
+                                    public void onSubscribe(Subscription s) {
+                                        displayBusyState();
+                                    }
+
+                                    @Override
+                                    public void onNext(Double aDouble) {
+                                        mBinding.progressBar.setProgress((int) (aDouble * 100.0));
+                                    }
+
+                                    @Override
+                                    public void onError(Throwable t) {
+                                        displayErrorState(t);
+                                    }
+
+                                    @Override
+                                    public void onComplete() {
+                                        displayIdleState();
+                                    }
+                                });*/
+
+        /*Single.create(new SingleOnSubscribe<File>() {
             @Override
             public void subscribe(SingleEmitter<File> emitter) throws Exception {
 
@@ -103,7 +180,7 @@ public class DemoActivity extends AppCompatActivity {
                     public void onError(Throwable e) {
                         displayErrorState(e);
                     }
-                });
+                });*/
 
     }
 
