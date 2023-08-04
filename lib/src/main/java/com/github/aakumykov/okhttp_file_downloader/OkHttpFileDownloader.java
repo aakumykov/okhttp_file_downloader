@@ -11,6 +11,7 @@ import com.github.aakumykov.okhttp_file_downloader.exceptions.EmptyBodyException
 import java.io.File;
 import java.io.IOException;
 
+import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -25,8 +26,8 @@ public class OkHttpFileDownloader implements AutoCloseable {
     private final OkHttpClient mOkHttpClient;
     private final OkHttpFileWriter mOkHttpFileWriter;
 
-    @Nullable private Response mResponse;
-    @Nullable private ResponseBody mResponseBody;
+    @Nullable private Call mCall;
+
 
     public static OkHttpFileDownloader createDefault(Context context) throws IOException {
         return create(tempFileName(context));
@@ -81,13 +82,14 @@ public class OkHttpFileDownloader implements AutoCloseable {
 
     public void download(String url) throws IOException, BadResponseException, EmptyBodyException {
 
-        final Request request = new Request.Builder().url(url).build();
-        mResponse = mOkHttpClient.newCall(request).execute();
+        mCall = mOkHttpClient.newCall(new Request.Builder().url(url).build());
 
-        if (!mResponse.isSuccessful())
-            throw new BadResponseException(mResponse, url);
+        final Response response = mCall.execute();
 
-        final ResponseBody responseBody = mResponse.body();
+        if (!response.isSuccessful())
+            throw new BadResponseException(response, url);
+
+        final ResponseBody responseBody = response.body();
 
         if (null == responseBody)
             throw new EmptyBodyException();
@@ -97,8 +99,8 @@ public class OkHttpFileDownloader implements AutoCloseable {
 
 
     public void interruptDownloading() {
-        if (null != mResponse)
-            mResponse.close();
+        if (null != mCall && !mCall.isCanceled())
+            mCall.cancel();
     }
 
 
