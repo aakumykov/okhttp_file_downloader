@@ -9,8 +9,8 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
-import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AppCompatActivity;
@@ -33,16 +33,21 @@ import io.reactivex.schedulers.Schedulers;
 public class DemoActivity extends AppCompatActivity {
 
     private static final String TAG = DemoActivity.class.getSimpleName();
+    private static final String KEY_URL = "URL";
     private ActivityDemoBinding mBinding;
     private ClipboardManager mClipboardManager;
     private final CompositeDisposable mCompositeDisposable = new CompositeDisposable();
+    @Nullable private OkHttpFileDownloader mOkHttpFileDownloader;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         mBinding = ActivityDemoBinding.inflate(getLayoutInflater());
         setContentView(mBinding.getRoot());
+
+        if (null != savedInstanceState)
+            mBinding.urlInput.setText(savedInstanceState.getString(KEY_URL));
 
         mBinding.downloadButton.setOnClickListener(v -> downloadImage());
         mBinding.cancelDownloadButton.setOnClickListener(v -> cancelDownloading());
@@ -54,8 +59,15 @@ public class DemoActivity extends AppCompatActivity {
         });
     }
 
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString(KEY_URL, mBinding.urlInput.getText().toString());
+    }
+
     private void cancelDownloading() {
-        Toast.makeText(this, "Ещё не реализовано", Toast.LENGTH_SHORT).show();
+        if (null != mOkHttpFileDownloader)
+            mOkHttpFileDownloader.interruptDownloading();
     }
 
     @Override
@@ -77,8 +89,10 @@ public class DemoActivity extends AppCompatActivity {
         Observable.create(new ObservableOnSubscribe<Double>() {
             @Override
             public void subscribe(ObservableEmitter<Double> emitter) throws Exception {
-                final File targetFile = File.createTempFile("image_", "_file", getCacheDir());
-                OkHttpFileDownloader.downloadFileTo(imageUrl, targetFile, new ProgressCallback() {
+
+                final File targetFile = new File(getCacheDir(), "downloaded.file");
+
+                mOkHttpFileDownloader = OkHttpFileDownloader.downloadFileTo(imageUrl, targetFile, new ProgressCallback() {
                     @Override
                     public void onProgress(double progressPercent) {
                         emitter.onNext(progressPercent);

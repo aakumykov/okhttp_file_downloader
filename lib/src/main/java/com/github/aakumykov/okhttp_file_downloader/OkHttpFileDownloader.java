@@ -22,6 +22,9 @@ public class OkHttpFileDownloader implements AutoCloseable {
     private final OkHttpClient mOkHttpClient;
     private final OkHttpFileWriter mOkHttpFileWriter;
 
+    @Nullable private Response mResponse;
+    @Nullable private ResponseBody mResponseBody;
+
 
     public static File downloadFile(String sourceURL)
             throws IOException, BadResponseException, EmptyBodyException
@@ -32,7 +35,7 @@ public class OkHttpFileDownloader implements AutoCloseable {
     }
 
 
-    public static void downloadFileTo(String sourceURL, File targetFile, @Nullable ProgressCallback progressCallback)
+    public static OkHttpFileDownloader downloadFileTo(String sourceURL, File targetFile, @Nullable ProgressCallback progressCallback)
             throws IOException, BadResponseException, EmptyBodyException
     {
         final OkHttpClient okHttpClient = new OkHttpClient();
@@ -41,7 +44,11 @@ public class OkHttpFileDownloader implements AutoCloseable {
         if (null != progressCallback)
             okHttpFileWriter.setProgressCallback(progressCallback);
 
-        new OkHttpFileDownloader(okHttpClient, okHttpFileWriter).download(sourceURL);
+        OkHttpFileDownloader okHttpFileDownloader = new OkHttpFileDownloader(okHttpClient, okHttpFileWriter);
+
+        okHttpFileDownloader.download(sourceURL);
+
+        return okHttpFileDownloader;
     }
 
 
@@ -65,6 +72,12 @@ public class OkHttpFileDownloader implements AutoCloseable {
             throw new EmptyBodyException();
 
         mOkHttpFileWriter.write(responseBody);
+    }
+
+
+    public void interruptDownloading() {
+        if (null != mResponse)
+            mResponse.close();
     }
 
 
