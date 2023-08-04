@@ -43,7 +43,7 @@ public class OkHttpFileWriter implements AutoCloseable {
                     mProgressCallback.onProgress(
                             loadedBytes,
                             totalBytes,
-                            Math.round(1f * loadedBytes / totalBytes * 100.0));
+                            1f * loadedBytes / totalBytes);
             }
 
             mBufferedSink.close();
