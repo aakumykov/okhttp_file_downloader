@@ -98,7 +98,7 @@ public class OkHttpFileDownloader implements AutoCloseable {
     }
 
 
-    public void interruptDownloading() {
+    public void cancelDownloading() {
         if (null != mCall && !mCall.isCanceled())
             mCall.cancel();
     }

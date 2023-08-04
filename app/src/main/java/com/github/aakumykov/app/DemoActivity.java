@@ -67,7 +67,7 @@ public class DemoActivity extends AppCompatActivity {
 
     private void cancelDownloading() {
         if (null != mOkHttpFileDownloader)
-            mOkHttpFileDownloader.interruptDownloading();
+            mOkHttpFileDownloader.cancelDownloading();
     }
 
     @Override
