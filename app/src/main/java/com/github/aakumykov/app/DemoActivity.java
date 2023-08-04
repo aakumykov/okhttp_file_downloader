@@ -49,8 +49,9 @@ public class DemoActivity extends AppCompatActivity {
         mBinding = ActivityDemoBinding.inflate(getLayoutInflater());
         setContentView(mBinding.getRoot());
 
-        if (null != savedInstanceState)
-            mBinding.urlInput.setText(savedInstanceState.getString(KEY_URL));
+        EditTextValuePersistingHelper editTextValuePersistingHelper = new EditTextValuePersistingHelper(this);
+        mBinding.urlInput.setText(editTextValuePersistingHelper.getText(KEY_URL));
+        editTextValuePersistingHelper.addFieldToPersistText(KEY_URL, mBinding.urlInput);
 
         mBinding.clearInputButton.setOnClickListener(v -> clearInputField());
         mBinding.downloadButton.setOnClickListener(v -> downloadImage());
@@ -143,6 +144,7 @@ public class DemoActivity extends AppCompatActivity {
 
                                     @Override
                                     public void onError(Throwable e) {
+                                        mDownloadingIsActive.set(false);
                                         displayErrorState(e);
                                     }
 
