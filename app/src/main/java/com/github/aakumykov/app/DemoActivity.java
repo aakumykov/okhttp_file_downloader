@@ -163,6 +163,14 @@ public class DemoActivity extends AppCompatActivity {
 
     private void downloadFileNew(final String sourceUrl) {
 
+        /*Timer timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+
+            }
+        },0,1000);*/
+
         Observable.create(new ObservableOnSubscribe<DownloadingProgress>() {
             @Override
             public void subscribe(ObservableEmitter<DownloadingProgress> emitter) throws Exception {
@@ -185,6 +193,8 @@ public class DemoActivity extends AppCompatActivity {
                         emitter.onComplete();
                     }
                 });
+
+                DownloadingProgress.resetCounter();
 
                 mOkHttpFileDownloader.download(sourceUrl);
             }
@@ -215,6 +225,10 @@ public class DemoActivity extends AppCompatActivity {
                     public void onComplete() {
                         mDownloadingIsActive.set(false);
                         mBinding.getRoot().postDelayed(() -> displayIdleState(), 1000);
+
+                        final int count = DownloadingProgress.counter;
+                        Toast.makeText(DemoActivity.this, "count="+count, Toast.LENGTH_SHORT).show();
+                        Log.d(TAG, "count="+count);
                     }
                 });
     }
