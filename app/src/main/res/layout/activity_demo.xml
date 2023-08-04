@@ -12,22 +12,30 @@
         android:layout_height="wrap_content"
         android:layout_weight="0">
 
-        <EditText
-            android:id="@+id/urlInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ems="10"
-            android:layout_weight="1"
-            android:textAlignment="center"
-            android:hint="URL изображения для загрузки"
-            android:inputType="textPersonName" />
-
         <ImageButton
             android:id="@+id/clipboardButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="9"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_weight="0"
             app:srcCompat="@drawable/ic_clipboard" />
+
+        <EditText
+            android:id="@+id/urlInput"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:ems="10"
+            android:hint="URL изображения для загрузки"
+            android:inputType="textPersonName"
+            android:textAlignment="center" />
+
+        <ImageButton
+            android:id="@+id/clearInputButton"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_weight="0"
+            app:srcCompat="@drawable/ic_baseline_clear_24" />
+
     </LinearLayout>
 
     <LinearLayout

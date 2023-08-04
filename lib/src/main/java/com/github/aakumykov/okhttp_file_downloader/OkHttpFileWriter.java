@@ -47,6 +47,9 @@ public class OkHttpFileWriter implements AutoCloseable {
             }
 
             mBufferedSink.close();
+
+            if (null != mProgressCallback)
+                mProgressCallback.onComplete();
         }
     }
 
