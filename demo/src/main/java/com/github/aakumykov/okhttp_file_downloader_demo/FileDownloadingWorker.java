@@ -10,6 +10,8 @@ import androidx.work.WorkerParameters;
 
 import com.github.aakumykov.okhttp_file_downloader.OkHttpFileDownloader;
 import com.github.aakumykov.okhttp_file_downloader.ProgressCallback;
+import com.github.aakumykov.okhttp_file_downloader.exceptions.BadResponseException;
+import com.github.aakumykov.okhttp_file_downloader.exceptions.EmptyBodyException;
 import com.gitlab.aakumykov.exception_utils_module.ExceptionUtils;
 
 import java.io.File;
@@ -39,12 +41,21 @@ public class FileDownloadingWorker extends Worker {
     @NonNull @Override
     public Result doWork() {
 
+        final String sourceURL = getInputData().getString(SOURCE_URL);
+        if (null == sourceURL) {
+            final String errorMsg = "Source url is null";
+            return Result.failure(errorData(new IllegalArgumentException(errorMsg)));
+        }
+
         try {
             final File targetFile = File.createTempFile(TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX);
+
             OkHttpFileDownloader okHttpFileDownloader = OkHttpFileDownloader.create(targetFile);
+
             okHttpFileDownloader.setProgressCallback(new ProgressCallback() {
                 @Override
                 public void onProgress(long bytes, long total, float percent) {
+                    Log.d(TAG, "onProgress: "+percent);
                     setProgressAsync(progressData(percent));
                 }
 
@@ -53,9 +64,12 @@ public class FileDownloadingWorker extends Worker {
 
                 }
             });
+
+            okHttpFileDownloader.download(sourceURL);
+
             return Result.success(successData(targetFile));
         }
-        catch (IOException e) {
+        catch (IOException | BadResponseException | EmptyBodyException e) {
             Log.e(TAG, ExceptionUtils.getErrorMessage(e), e);
             return Result.failure(errorData(e));
         }

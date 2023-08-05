@@ -159,11 +159,19 @@ public class DemoActivity extends AppCompatActivity {
             @Override
             public void onChanged(WorkInfo workInfo) {
 
+                if (null == workInfo) {
+                    Log.d(TAG, "onChanged: NULL");
+                    return;
+                }
+
                 final Data progressData = workInfo.getProgress();
                 final float percent = progressData.getFloat(FileDownloadingWorker.PROGRESS, 0f);
                 mBinding.progressBar.setProgress(floatPercentsToProgress(percent));
 
                 final WorkInfo.State workInfoState = workInfo.getState();
+
+                Log.d(TAG, "workInfoState: "+workInfoState+", percent: "+percent);
+
                 switch (workInfoState) {
                     case ENQUEUED:
                     case BLOCKED:
