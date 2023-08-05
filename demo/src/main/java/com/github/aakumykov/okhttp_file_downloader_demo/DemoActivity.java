@@ -2,10 +2,13 @@ package com.github.aakumykov.okhttp_file_downloader_demo;
 
 import android.content.ClipData;
 import android.content.ClipboardManager;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.ServiceConnection;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
@@ -40,16 +43,17 @@ import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
 
-public class DemoActivity extends AppCompatActivity {
+public class DemoActivity extends AppCompatActivity implements ServiceConnection {
 
     private static final String TAG = DemoActivity.class.getSimpleName();
     private static final String KEY_URL = "URL";
     private ActivityDemoBinding mBinding;
     private ClipboardManager mClipboardManager;
     private final CompositeDisposable mCompositeDisposable = new CompositeDisposable();
-    @Nullable
-    private OkHttpFileDownloader mOkHttpFileDownloader;
+    @Nullable private OkHttpFileDownloader mOkHttpFileDownloader;
     private final AtomicBoolean mDownloadingIsActive = new AtomicBoolean(false);
+    @Nullable private FileDownloadingService mFileDownloadingService;
+
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -63,9 +67,14 @@ public class DemoActivity extends AppCompatActivity {
         editTextValuePersistingHelper.addFieldToPersistText(KEY_URL, mBinding.urlInput);
 
         mBinding.clearInputButton.setOnClickListener(v -> clearInputField());
-        mBinding.downloadButton.setOnClickListener(v -> downloadFile(false));
-        mBinding.downloadWithWorkerButton.setOnClickListener(v -> downloadFile(true));
+
+        mBinding.downloadButton.setOnClickListener(v -> downloadFile(DownloadMode.SIMPLE));
         mBinding.cancelDownloadButton.setOnClickListener(v -> cancelDownloading());
+
+        mBinding.downloadWithWorkerButton.setOnClickListener(v -> downloadFile(DownloadMode.WORKER));
+
+        mBinding.downloadViaServiceButton.setOnClickListener(v -> downloadFile(DownloadMode.SERVICE));
+        mBinding.cancelDownloadingViaServiceButton.setOnClickListener(v -> cancelDownloadingViaService());
 
         mBinding.clipboardButton.setOnClickListener(v -> {
             final String text = clipboardText().toString();
@@ -95,7 +104,7 @@ public class DemoActivity extends AppCompatActivity {
         mCompositeDisposable.dispose();
     }
 
-    private void downloadFile(boolean withWorker) {
+    private void downloadFile(final DownloadMode downloadMode) {
 
         if (mDownloadingIsActive.get()) {
             Toast.makeText(this, "Скачивание уже идёт", Toast.LENGTH_SHORT).show();
@@ -108,15 +117,30 @@ public class DemoActivity extends AppCompatActivity {
             return;
         }
 
-        if (withWorker)
-            downloadWithWorker();
-        else {
-//        downloadFileOld(sourceUrl);
-            downloadFileNew(sourceUrl);
-//        downloadFileNew2(sourceUrl);
+        switch (downloadMode) {
+            case SIMPLE:
+//              downloadFileOld(sourceUrl);
+                downloadFileNew(sourceUrl);
+//              downloadFileNew2(sourceUrl);
+                break;
+            case WORKER:
+                downloadWithWorker();
+                break;
+            case SERVICE:
+                downloadViaService();
+                break;
+            default:
+                Toast.makeText(this, "Неизвестный режим: "+downloadMode, Toast.LENGTH_SHORT).show();
         }
     }
 
+    private void downloadViaService() {
+        bindService(FileDownloadingService.intent(this), this, BIND_AUTO_CREATE);
+    }
+
+    private void cancelDownloadingViaService() {
+        Toast.makeText(this, "Ещё не реализовано", Toast.LENGTH_SHORT).show();
+    }
 
     private void downloadWithWorker() {
 
@@ -170,7 +194,7 @@ public class DemoActivity extends AppCompatActivity {
 
                 final WorkInfo.State workInfoState = workInfo.getState();
 
-                Log.d(TAG, "workInfoState: "+workInfoState+", percent: "+percent);
+//                Log.d(TAG, "workInfoState: "+workInfoState+", percent: "+percent);
 
                 switch (workInfoState) {
                     case ENQUEUED:
@@ -474,9 +498,26 @@ public class DemoActivity extends AppCompatActivity {
         return (null != clipData) ? clipData.getItemAt(0).getText() : "";
     }
 
+
+    @Override
+    public void onServiceConnected(ComponentName name, IBinder binder) {
+        Log.d(TAG, "onServiceConnected() called with: name = [" + name + "], binder = [" + binder + "]");
+        if (binder instanceof FileDownloadingService.Binder)
+            mFileDownloadingService = ((FileDownloadingService.Binder) binder).getService();
+    }
+
+    @Override
+    public void onServiceDisconnected(ComponentName name) {
+        Log.d(TAG, "onServiceDisconnected() called with: name = [" + name + "]");
+        mFileDownloadingService = null;
+    }
+
+
     private enum WorkState { PROGRESS, SUCCESS, ERROR }
 
     private int floatPercentsToProgress(float percent) {
         return (int) (percent * 100.0);
     }
+
+    private enum DownloadMode { SIMPLE, WORKER, SERVICE }
 }
