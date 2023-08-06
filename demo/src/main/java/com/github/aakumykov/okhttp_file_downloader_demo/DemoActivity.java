@@ -40,7 +40,7 @@ public class DemoActivity extends AppCompatActivity {
     private ActivityDemoBinding mBinding;
     private ClipboardManager mClipboardManager;
     private final CompositeDisposable mCompositeDisposable = new CompositeDisposable();
-    @Nullable private FileDownloader mOkHttpFileDownloader;
+    private FileDownloader mOkHttpFileDownloader;
     private final AtomicBoolean mDownloadingIsActive = new AtomicBoolean(false);
 
     @Override
@@ -65,6 +65,8 @@ public class DemoActivity extends AppCompatActivity {
                 mBinding.urlInput.setSelection(text.length());
             }
         });
+
+        mOkHttpFileDownloader = OkHttpFileDownloader.create();
     }
 
     @Override
@@ -115,8 +117,6 @@ public class DemoActivity extends AppCompatActivity {
                     public void subscribe(ObservableEmitter<Double> emitter) throws Exception {
 
                         mDownloadingIsActive.set(true);
-
-                        mOkHttpFileDownloader = OkHttpFileDownloader.create();
 
                         mOkHttpFileDownloader.setProgressCallback(new ProgressCallback() {
                             @Override
@@ -171,8 +171,6 @@ public class DemoActivity extends AppCompatActivity {
                     public void subscribe(ObservableEmitter<DownloadingProgress> emitter) throws Exception {
 
                         mDownloadingIsActive.set(true);
-
-                        mOkHttpFileDownloader = OkHttpFileDownloader.create();
 
                         DownloadingProgress.resetCounter();
 
@@ -234,8 +232,6 @@ public class DemoActivity extends AppCompatActivity {
                     public void subscribe(ObservableEmitter<Float> emitter) throws Exception {
 
                         mDownloadingIsActive.set(true);
-
-                        mOkHttpFileDownloader = OkHttpFileDownloader.create();
 
                         mOkHttpFileDownloader.setProgressCallback(new ProgressCallback() {
                             @Override
