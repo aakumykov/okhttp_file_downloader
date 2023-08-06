@@ -16,6 +16,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.github.aakumykov.okhttp_file_downloader.FileDownloader;
 import com.github.aakumykov.okhttp_file_downloader.OkHttpFileDownloader;
 import com.github.aakumykov.okhttp_file_downloader.ProgressCallback;
 import com.github.aakumykov.okhttp_file_downloader_demo.databinding.ActivityDemoBinding;
@@ -39,8 +40,7 @@ public class DemoActivity extends AppCompatActivity {
     private ActivityDemoBinding mBinding;
     private ClipboardManager mClipboardManager;
     private final CompositeDisposable mCompositeDisposable = new CompositeDisposable();
-    @Nullable
-    private OkHttpFileDownloader mOkHttpFileDownloader;
+    @Nullable private FileDownloader mOkHttpFileDownloader;
     private final AtomicBoolean mDownloadingIsActive = new AtomicBoolean(false);
 
     @Override
@@ -60,8 +60,10 @@ public class DemoActivity extends AppCompatActivity {
 
         mBinding.clipboardButton.setOnClickListener(v -> {
             final String text = clipboardText().toString();
-            if (!TextUtils.isEmpty(text))
+            if (!TextUtils.isEmpty(text)) {
                 mBinding.urlInput.setText(text);
+                mBinding.urlInput.setSelection(text.length());
+            }
         });
     }
 
@@ -73,7 +75,7 @@ public class DemoActivity extends AppCompatActivity {
 
     private void cancelDownloading() {
         if (null != mOkHttpFileDownloader)
-            mOkHttpFileDownloader.cancelDownloading();
+            mOkHttpFileDownloader.stopDownloading();
     }
 
     private void clearInputField() {
@@ -100,13 +102,13 @@ public class DemoActivity extends AppCompatActivity {
             return;
         }
 
-//        downloadFileOld(sourceUrl);
-        downloadFileNew(sourceUrl);
-//        downloadFileNew2(sourceUrl);
+//        downloadFileOld();
+        downloadFileNew();
+//        downloadFileNew2();
     }
 
 
-    private void downloadFileOld(final String sourceUrl) {
+    private void downloadFileOld() {
 
         Observable.create(new ObservableOnSubscribe<Double>() {
                     @Override
@@ -114,9 +116,7 @@ public class DemoActivity extends AppCompatActivity {
 
                         mDownloadingIsActive.set(true);
 
-                        final File targetFile = new File(getCacheDir(), "downloaded.file");
-
-                        mOkHttpFileDownloader = OkHttpFileDownloader.create(targetFile);
+                        mOkHttpFileDownloader = OkHttpFileDownloader.create();
 
                         mOkHttpFileDownloader.setProgressCallback(new ProgressCallback() {
                             @Override
@@ -132,7 +132,7 @@ public class DemoActivity extends AppCompatActivity {
                             }
                         });
 
-                        mOkHttpFileDownloader.download(sourceUrl);
+                        mOkHttpFileDownloader.download(sourceUrl(), targetFile());
                     }
                 })
                 .subscribeOn(Schedulers.io())
@@ -164,15 +164,7 @@ public class DemoActivity extends AppCompatActivity {
     }
 
 
-    private void downloadFileNew(final String sourceUrl) {
-
-        /*Timer timer = new Timer();
-        timer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-
-            }
-        },0,1000);*/
+    private void downloadFileNew() {
 
         Observable.create(new ObservableOnSubscribe<DownloadingProgress>() {
                     @Override
@@ -180,9 +172,9 @@ public class DemoActivity extends AppCompatActivity {
 
                         mDownloadingIsActive.set(true);
 
-                        final File targetFile = new File(getCacheDir(), "downloaded.file");
+                        mOkHttpFileDownloader = OkHttpFileDownloader.create();
 
-                        mOkHttpFileDownloader = OkHttpFileDownloader.create(targetFile);
+                        DownloadingProgress.resetCounter();
 
                         mOkHttpFileDownloader.setProgressCallback(new ProgressCallback() {
                             @Override
@@ -197,9 +189,7 @@ public class DemoActivity extends AppCompatActivity {
                             }
                         });
 
-                        DownloadingProgress.resetCounter();
-
-                        mOkHttpFileDownloader.download(sourceUrl);
+                        mOkHttpFileDownloader.download(sourceUrl(), targetFile());
                     }
                 })
                 .subscribeOn(Schedulers.io())
@@ -245,9 +235,7 @@ public class DemoActivity extends AppCompatActivity {
 
                         mDownloadingIsActive.set(true);
 
-                        final File targetFile = new File(getCacheDir(), "downloaded.file");
-
-                        mOkHttpFileDownloader = OkHttpFileDownloader.create(targetFile);
+                        mOkHttpFileDownloader = OkHttpFileDownloader.create();
 
                         mOkHttpFileDownloader.setProgressCallback(new ProgressCallback() {
                             @Override
@@ -264,7 +252,7 @@ public class DemoActivity extends AppCompatActivity {
 
                         DownloadingProgress.resetCounter();
 
-                        mOkHttpFileDownloader.download(sourceUrl);
+                        mOkHttpFileDownloader.download(sourceUrl(), targetFile());
                     }
                 })
                 .subscribeOn(Schedulers.io())
@@ -380,4 +368,12 @@ public class DemoActivity extends AppCompatActivity {
         return (null != clipData) ? clipData.getItemAt(0).getText() : "";
     }
 
+
+    private String sourceUrl() {
+        return mBinding.urlInput.getText().toString();
+    }
+
+    private File targetFile() {
+        return new File(getCacheDir(), "downloaded.file");
+    }
 }
