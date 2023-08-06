@@ -134,13 +134,33 @@ public class DemoActivity extends AppCompatActivity implements ServiceConnection
         }
     }
 
+
     private void downloadViaService() {
         bindService(FileDownloadingService.intent(this), this, BIND_AUTO_CREATE);
     }
 
     private void cancelDownloadingViaService() {
-        Toast.makeText(this, "Ещё не реализовано", Toast.LENGTH_SHORT).show();
+        if (null != mFileDownloadingService)
+            mFileDownloadingService.stopWork();
     }
+
+
+    @Override
+    public void onServiceConnected(ComponentName name, IBinder binder) {
+        Log.d(TAG, "onServiceConnected() called with: name = [" + name + "], binder = [" + binder + "]");
+        if (binder instanceof FileDownloadingService.Binder) {
+            mFileDownloadingService = ((FileDownloadingService.Binder) binder).getService();
+            mFileDownloadingService.startWork();
+        }
+    }
+
+
+    @Override
+    public void onServiceDisconnected(ComponentName name) {
+        Log.d(TAG, "onServiceDisconnected() called with: name = [" + name + "]");
+        mFileDownloadingService = null;
+    }
+
 
     private void downloadWithWorker() {
 
@@ -498,19 +518,6 @@ public class DemoActivity extends AppCompatActivity implements ServiceConnection
         return (null != clipData) ? clipData.getItemAt(0).getText() : "";
     }
 
-
-    @Override
-    public void onServiceConnected(ComponentName name, IBinder binder) {
-        Log.d(TAG, "onServiceConnected() called with: name = [" + name + "], binder = [" + binder + "]");
-        if (binder instanceof FileDownloadingService.Binder)
-            mFileDownloadingService = ((FileDownloadingService.Binder) binder).getService();
-    }
-
-    @Override
-    public void onServiceDisconnected(ComponentName name) {
-        Log.d(TAG, "onServiceDisconnected() called with: name = [" + name + "]");
-        mFileDownloadingService = null;
-    }
 
 
     private enum WorkState { PROGRESS, SUCCESS, ERROR }
