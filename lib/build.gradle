@@ -6,7 +6,7 @@ plugins {
 project.ext {
     artifactId = 'okhttp_file_downloader'
     groupId = 'com.github.aakumykov'
-    versionCode = 3
+    versionCode = 4
     versionName = "0.0." + versionCode
 }
 
