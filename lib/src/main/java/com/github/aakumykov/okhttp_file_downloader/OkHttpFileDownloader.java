@@ -21,6 +21,9 @@ import okhttp3.ResponseBody;
 public class OkHttpFileDownloader implements FileDownloader, AutoCloseable {
 
     private static final String TAG = OkHttpFileDownloader.class.getSimpleName();
+    private static final String TEMP_FILE_PREFIX = TAG + "_";
+    private static final String TEMP_FILE_SUFFIX = ".downloaded";
+
     @Nullable private OkHttpClient mOkHttpClient;
     @Nullable private OkHttpFileWriter mOkHttpFileWriter;
     @Nullable private Call mCall;
@@ -45,6 +48,11 @@ public class OkHttpFileDownloader implements FileDownloader, AutoCloseable {
         startDownloading(sourceUrl);
     }
 
+    @Override
+    public void download(@NonNull String sourceUrl) throws
+            IOException, EmptyBodyException, BadResponseException {
+        download(sourceUrl, tempFile());
+    }
 
     @Override
     public void setProgressCallback(@Nullable ProgressCallback progressCallback) {
@@ -105,5 +113,9 @@ public class OkHttpFileDownloader implements FileDownloader, AutoCloseable {
 
     private OkHttpFileWriter okHttpFileWriter(@NonNull final File targetFile) throws FileNotFoundException {
         return new OkHttpFileWriter(targetFile);
+    }
+
+    private File tempFile() throws IOException{
+        return File.createTempFile(TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX);
     }
 }
