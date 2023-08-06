@@ -10,6 +10,6 @@ import java.io.IOException;
 
 public interface FileDownloader {
     void download(@NonNull final String sourceUrl, @NonNull final File targetFile) throws EmptyBodyException, BadResponseException, IOException;
-    void stopDownloading();
     void setProgressCallback(ProgressCallback progressCallback);
+    void stopDownloading();
 }

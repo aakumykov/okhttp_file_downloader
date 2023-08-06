@@ -6,6 +6,8 @@ import androidx.annotation.Nullable;
 import com.github.aakumykov.okhttp_file_downloader.exceptions.BadResponseException;
 import com.github.aakumykov.okhttp_file_downloader.exceptions.EmptyBodyException;
 
+import org.jetbrains.annotations.Contract;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -27,6 +29,13 @@ public class OkHttpFileDownloader implements FileDownloader, AutoCloseable {
     @Nullable private ProgressCallback mProgressCallback;
 
 
+    @NonNull @Contract(value = " -> new", pure = true)
+    public static OkHttpFileDownloader create() {
+        return new OkHttpFileDownloader();
+    }
+
+
+
     @Override
     public void download(@NonNull String sourceUrl, @NonNull File targetFile) throws
             EmptyBodyException, BadResponseException, IOException
@@ -36,11 +45,6 @@ public class OkHttpFileDownloader implements FileDownloader, AutoCloseable {
         startDownloading(sourceUrl);
     }
 
-    @Override
-    public void stopDownloading() {
-        if (null != mCall)
-            mCall.cancel();
-    }
 
     @Override
     public void setProgressCallback(@Nullable ProgressCallback progressCallback) {
@@ -48,8 +52,10 @@ public class OkHttpFileDownloader implements FileDownloader, AutoCloseable {
     }
 
 
-    public static OkHttpFileDownloader create() {
-        return new OkHttpFileDownloader();
+    @Override
+    public void stopDownloading() {
+        if (null != mCall)
+            mCall.cancel();
     }
 
 
@@ -57,16 +63,10 @@ public class OkHttpFileDownloader implements FileDownloader, AutoCloseable {
 
     }
 
-    // FIXME: не могу использовать этот метод, потому что от моей реализации зависит, будет ли вызван ProgressCallback.
+    // FIXME: не могу использовать этот конструктор, потому что от моей реализации зависит, будет ли вызван ProgressCallback.
     private OkHttpFileDownloader(@NonNull OkHttpClient okHttpClient, @NonNull OkHttpFileWriter okHttpFileWriter) {
         mOkHttpClient = okHttpClient;
         mOkHttpFileWriter = okHttpFileWriter;
-    }
-
-
-    public void cancelDownloading() {
-        if (null != mCall && !mCall.isCanceled())
-            mCall.cancel();
     }
 
 
@@ -98,8 +98,6 @@ public class OkHttpFileDownloader implements FileDownloader, AutoCloseable {
         mOkHttpFileWriter.setProgressCallback(mProgressCallback);
         mOkHttpFileWriter.write(responseBody);
     }
-
-
 
     private OkHttpClient okHttpClient() {
         return new OkHttpClient();
