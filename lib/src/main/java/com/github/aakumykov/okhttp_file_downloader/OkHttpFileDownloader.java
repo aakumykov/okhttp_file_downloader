@@ -49,9 +49,11 @@ public class OkHttpFileDownloader implements FileDownloader, AutoCloseable {
     }
 
     @Override
-    public void download(@NonNull String sourceUrl) throws
+    public File download(@NonNull String sourceUrl) throws
             IOException, EmptyBodyException, BadResponseException {
-        download(sourceUrl, tempFile());
+        final File tempFile = tempFile();
+        download(sourceUrl, tempFile);
+        return tempFile;
     }
 
     @Override
