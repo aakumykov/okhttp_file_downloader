@@ -28,9 +28,12 @@ import androidx.work.WorkManager;
 import com.github.aakumykov.enum_utils.EnumUtils;
 import com.github.aakumykov.okhttp_file_downloader.OkHttpFileDownloader;
 import com.github.aakumykov.okhttp_file_downloader.ProgressCallback;
+import com.github.aakumykov.okhttp_file_downloader.exceptions.BadResponseException;
+import com.github.aakumykov.okhttp_file_downloader.exceptions.EmptyBodyException;
 import com.github.aakumykov.okhttp_file_downloader_demo.databinding.ActivityDemoBinding;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -147,10 +150,33 @@ public class DemoActivity extends AppCompatActivity implements ServiceConnection
 
     @Override
     public void onServiceConnected(ComponentName name, IBinder binder) {
+
         Log.d(TAG, "onServiceConnected() called with: name = [" + name + "], binder = [" + binder + "]");
+
         if (binder instanceof FileDownloadingService.Binder) {
+
             mFileDownloadingService = ((FileDownloadingService.Binder) binder).getService();
-            mFileDownloadingService.startWork();
+
+            try {
+                mFileDownloadingService.downloadFile(sourceURL(), targetFile());
+                displayBusyState();
+
+                // FIXME: по идее, его нужно устанавливать раньше запуска скачивания.
+                mFileDownloadingService.setProgressCallback(new ProgressCallback() {
+                    @Override
+                    public void onProgress(long bytes, long total, float percent) {
+                        displayProgress(percent);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        displayIdleState();
+                    }
+                });
+            }
+            catch (IOException | EmptyBodyException | BadResponseException e) {
+                displayErrorState(e);
+            }
         }
     }
 
@@ -210,7 +236,7 @@ public class DemoActivity extends AppCompatActivity implements ServiceConnection
 
                 final Data progressData = workInfo.getProgress();
                 final float percent = progressData.getFloat(FileDownloadingWorker.PROGRESS, 0f);
-                mBinding.progressBar.setProgress(floatPercentsToProgress(percent));
+                displayProgress(percent);
 
                 final WorkInfo.State workInfoState = workInfo.getState();
 
@@ -252,15 +278,13 @@ public class DemoActivity extends AppCompatActivity implements ServiceConnection
 
                         mDownloadingIsActive.set(true);
 
-                        final File targetFile = new File(getCacheDir(), "downloaded.file");
-
-                        mOkHttpFileDownloader = OkHttpFileDownloader.create(targetFile);
+                        mOkHttpFileDownloader = OkHttpFileDownloader.create(targetFile());
 
                         mOkHttpFileDownloader.setProgressCallback(new ProgressCallback() {
                             @Override
                             public void onProgress(long bytes, long total, float percent) {
                                 Log.d(TAG, "onProgress() called with: bytes = [" + bytes + "], total = [" + total + "], percent = [" + percent + "]");
-                                mBinding.progressBar.setProgress((int) (percent));
+                                displayProgress(percent);
                                 mBinding.loadedBytesView.setText(ByteSizeConverter.humanReadableByteCountSI(bytes));
                             }
 
@@ -304,14 +328,6 @@ public class DemoActivity extends AppCompatActivity implements ServiceConnection
 
     private void downloadFileNew(final String sourceUrl) {
 
-        /*Timer timer = new Timer();
-        timer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-
-            }
-        },0,1000);*/
-
         Observable.create(new ObservableOnSubscribe<DownloadingProgress>() {
                     @Override
                     public void subscribe(ObservableEmitter<DownloadingProgress> emitter) throws Exception {
@@ -342,7 +358,6 @@ public class DemoActivity extends AppCompatActivity implements ServiceConnection
                 })
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-
                 .subscribe(new Observer<DownloadingProgress>() {
                     @Override
                     public void onSubscribe(Disposable d) {
@@ -352,7 +367,7 @@ public class DemoActivity extends AppCompatActivity implements ServiceConnection
 
                     @Override
                     public void onNext(DownloadingProgress downloadingProgress) {
-                        mBinding.progressBar.setProgress(floatPercentsToProgress(downloadingProgress.percent));
+                        displayProgress(downloadingProgress.percent);
                         mBinding.loadedBytesView.setText(ByteSizeConverter.humanReadableByteCountSI(downloadingProgress.loadedBytes));
                     }
 
@@ -407,7 +422,6 @@ public class DemoActivity extends AppCompatActivity implements ServiceConnection
                 })
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-
                 .subscribe(new Observer<Float>() {
                     @Override
                     public void onSubscribe(Disposable d) {
@@ -527,4 +541,18 @@ public class DemoActivity extends AppCompatActivity implements ServiceConnection
     }
 
     private enum DownloadMode { SIMPLE, WORKER, SERVICE }
+
+
+    private File targetFile() {
+        return new File(getCacheDir(), "downloaded.file");
+    }
+
+    private String sourceURL() {
+        return mBinding.urlInput.getText().toString();
+    }
+
+
+    private void displayProgress(float percent) {
+        mBinding.progressBar.setProgress((int) percent);
+    }
 }

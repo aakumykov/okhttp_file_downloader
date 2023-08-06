@@ -6,23 +6,24 @@ import android.content.Intent;
 import android.os.IBinder;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.gitlab.aakumykov.exception_utils_module.ExceptionUtils;
+import com.github.aakumykov.okhttp_file_downloader.OkHttpFileDownloader;
+import com.github.aakumykov.okhttp_file_downloader.ProgressCallback;
+import com.github.aakumykov.okhttp_file_downloader.exceptions.BadResponseException;
+import com.github.aakumykov.okhttp_file_downloader.exceptions.EmptyBodyException;
 
-import java.util.concurrent.TimeUnit;
+import java.io.File;
+import java.io.IOException;
 
-import io.reactivex.Observable;
-import io.reactivex.Observer;
-import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
-import io.reactivex.disposables.Disposable;
-import io.reactivex.schedulers.Schedulers;
 
 public class FileDownloadingService extends Service {
 
     private static final String TAG = FileDownloadingService.class.getSimpleName();
     private final CompositeDisposable mCompositeDisposable = new CompositeDisposable();
+    @Nullable private OkHttpFileDownloader mOkHttpFileDownloader;
 
     public static Intent intent(Context context) {
         return new Intent(context, FileDownloadingService.class);
@@ -69,36 +70,23 @@ public class FileDownloadingService extends Service {
         Log.d(TAG, "onRebind() called with: intent = [" + intent + "]");
     }
 
-    public void startWork() {
-        Observable.interval(1000, TimeUnit.MILLISECONDS)
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Observer<Long>() {
-                    @Override
-                    public void onSubscribe(Disposable d) {
-                        mCompositeDisposable.add(d);
-                    }
-
-                    @Override
-                    public void onNext(Long aLong) {
-                        Log.d(TAG, "onNext() called with: aLong = [" + aLong + "]");
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        Log.e(TAG, ExceptionUtils.getErrorMessage(e), e);
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        Log.d(TAG, "onComplete() called");
-                    }
-                });
+    public void downloadFile(@NonNull final String sourceUrl, @NonNull final File targetFile)
+            throws IOException, EmptyBodyException, BadResponseException
+    {
+        mOkHttpFileDownloader = OkHttpFileDownloader.create(targetFile);
+        mOkHttpFileDownloader.download(sourceUrl);
     }
 
 
     void stopWork() {
-        mCompositeDisposable.dispose();
+        if (null != mOkHttpFileDownloader)
+            mOkHttpFileDownloader.cancelDownloading();
+    }
+
+
+    public void setProgressCallback(@NonNull final ProgressCallback progressCallback) {
+        if (null != mOkHttpFileDownloader)
+            mOkHttpFileDownloader.setProgressCallback(progressCallback);
     }
 
 
