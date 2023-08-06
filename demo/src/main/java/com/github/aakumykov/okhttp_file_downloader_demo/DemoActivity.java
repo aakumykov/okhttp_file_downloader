@@ -20,6 +20,7 @@ import com.github.aakumykov.okhttp_file_downloader.FileDownloader;
 import com.github.aakumykov.okhttp_file_downloader.OkHttpFileDownloader;
 import com.github.aakumykov.okhttp_file_downloader.ProgressCallback;
 import com.github.aakumykov.okhttp_file_downloader_demo.databinding.ActivityDemoBinding;
+import com.github.aakumykov.okhttp_file_downloader_rx.OkHttpFileDownloaderRx;
 
 import java.io.File;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -55,8 +56,12 @@ public class DemoActivity extends AppCompatActivity {
         editTextValuePersistingHelper.addFieldToPersistText(KEY_URL, mBinding.urlInput);
 
         mBinding.clearInputButton.setOnClickListener(v -> clearInputField());
-        mBinding.downloadButton.setOnClickListener(v -> downloadFile());
+
+        mBinding.downloadButton.setOnClickListener(v -> downloadFile(DownloadMode.SIMPLE));
         mBinding.cancelDownloadButton.setOnClickListener(v -> cancelDownloading());
+
+        mBinding.downloadButtonRx.setOnClickListener(v -> downloadFile(DownloadMode.RXJAVA));
+        mBinding.cancelDownloadButtonRx.setOnClickListener(v -> cancelDownloadingRx());
 
         mBinding.clipboardButton.setOnClickListener(v -> {
             final String text = clipboardText().toString();
@@ -67,6 +72,44 @@ public class DemoActivity extends AppCompatActivity {
         });
 
         mOkHttpFileDownloader = OkHttpFileDownloader.create();
+    }
+
+    private void downloadWithRx() {
+
+        mDownloadingIsActive.set(true);
+
+        OkHttpFileDownloaderRx.download(sourceUrl(), targetFile())
+                .doOnTerminate(() -> {
+                    mDownloadingIsActive.set(false);
+                    displayIdleState();
+                })
+                .subscribe(new Observer<com.github.aakumykov.okhttp_file_downloader_rx.DownloadingProgress>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+                        mCompositeDisposable.add(d);
+                        displayBusyState();
+                    }
+
+                    @Override
+                    public void onNext(com.github.aakumykov.okhttp_file_downloader_rx.DownloadingProgress downloadingProgress) {
+                        mBinding.progressBar.setProgress((int) (downloadingProgress.percent * 100.0));
+                        mBinding.loadedBytesView.setText(ByteSizeConverter.humanReadableByteCountSI(downloadingProgress.loadedBytes));
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        displayErrorState(e);
+                    }
+
+                    @Override
+                    public void onComplete() {
+
+                    }
+                });
+    }
+
+    private void cancelDownloadingRx() {
+
     }
 
     @Override
@@ -91,7 +134,7 @@ public class DemoActivity extends AppCompatActivity {
     }
 
 
-    private void downloadFile() {
+    private void downloadFile(DownloadMode downloadMode) {
 
         if (mDownloadingIsActive.get()) {
             Toast.makeText(this, "Скачивание уже идёт", Toast.LENGTH_SHORT).show();
@@ -104,9 +147,22 @@ public class DemoActivity extends AppCompatActivity {
             return;
         }
 
+        switch (downloadMode) {
+            case SIMPLE:
 //        downloadFileOld();
-        downloadFileNew();
+                downloadFileNew();
 //        downloadFileNew2();
+                break;
+            case RXJAVA:
+                downloadWithRx();
+                break;
+            default:
+                showToast("Неизвестный режим: "+downloadMode);
+        }
+    }
+
+    private void showToast(String text) {
+        Toast.makeText(this, text, Toast.LENGTH_SHORT).show();
     }
 
 
@@ -372,4 +428,7 @@ public class DemoActivity extends AppCompatActivity {
     private File targetFile() {
         return new File(getCacheDir(), "downloaded.file");
     }
+
+
+    private enum DownloadMode { SIMPLE, RXJAVA }
 }

@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 rootProject.name = "okhttp_file_downloader"
 include ':lib'
 include ':demo'
+include ':lib_rx'
