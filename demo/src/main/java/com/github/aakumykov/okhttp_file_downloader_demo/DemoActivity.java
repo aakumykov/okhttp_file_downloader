@@ -177,7 +177,7 @@ public class DemoActivity extends AppCompatActivity {
                         mOkHttpFileDownloader.setProgressCallback(new ProgressCallback() {
                             @Override
                             public void onProgress(long bytes, long total, float percent) {
-                                Log.d(TAG, "onProgress() called with: bytes = [" + bytes + "], total = [" + total + "], percent = [" + percent + "]");
+//                                Log.d(TAG, "onProgress() called with: bytes = [" + bytes + "], total = [" + total + "], percent = [" + percent + "]");
                                 emitter.onNext(new DownloadingProgress(bytes, total, percent));
                             }
 
@@ -187,7 +187,9 @@ public class DemoActivity extends AppCompatActivity {
                             }
                         });
 
-                        mOkHttpFileDownloader.download(sourceUrl(), targetFile());
+                        Log.d(TAG, "Загрузка во временный файл началась...");
+                        final File loadedFile = mOkHttpFileDownloader.download(sourceUrl());
+                        Log.d(TAG, "...загрузка во временный файл окончена.");
                     }
                 })
                 .subscribeOn(Schedulers.io())
