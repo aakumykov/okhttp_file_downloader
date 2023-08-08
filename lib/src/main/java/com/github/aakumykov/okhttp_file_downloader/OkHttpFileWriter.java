@@ -13,6 +13,7 @@ import okio.Okio;
 
 public class OkHttpFileWriter implements AutoCloseable {
 
+    private static final int READ_BUFFER_SIZE = 1024 * 1024;
     private final BufferedSink mBufferedSink;
     @Nullable private ProgressCallback mProgressCallback;
 
@@ -30,7 +31,7 @@ public class OkHttpFileWriter implements AutoCloseable {
 
         try (BufferedSource bufferedSource = responseBody.source()) {
 
-            final byte[] dataBuffer = new byte[1024 * 1024];
+            final byte[] dataBuffer = new byte[READ_BUFFER_SIZE];
             final long totalBytes = responseBody.contentLength();
             long loadedBytes = 0;
             int readedBytes;
