@@ -18,7 +18,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.work.Data;
 import androidx.work.ExistingWorkPolicy;
 import androidx.work.OneTimeWorkRequest;
-import androidx.work.Operation;
 import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 
@@ -26,6 +25,7 @@ import com.github.aakumykov.enum_utils.EnumUtils;
 import com.github.aakumykov.okhttp_file_downloader.OkHttpFileDownloader;
 import com.github.aakumykov.okhttp_file_downloader.ProgressCallback;
 import com.github.aakumykov.okhttp_file_downloader_demo.databinding.ActivityDemoBinding;
+import com.github.abdularis.buttonprogress.DownloadButtonProgress;
 
 import java.io.File;
 import java.util.UUID;
@@ -82,7 +82,7 @@ public class DemoActivity extends AppCompatActivity {
 
     private void cancelDownloading() {
         if (null != mOkHttpFileDownloader)
-            mOkHttpFileDownloader.cancelDownloading();
+            mOkHttpFileDownloader.stopDownloading();
     }
 
     private void clearInputField() {
@@ -110,11 +110,8 @@ public class DemoActivity extends AppCompatActivity {
 
         if (withWorker)
             downloadWithWorker();
-        else {
-//        downloadFileOld(sourceUrl);
+        else
             downloadFileNew(sourceUrl);
-//        downloadFileNew2(sourceUrl);
-        }
     }
 
 
@@ -166,7 +163,7 @@ public class DemoActivity extends AppCompatActivity {
 
                 final Data progressData = workInfo.getProgress();
                 final float percent = progressData.getFloat(FileDownloadingWorker.PROGRESS, 0f);
-                mBinding.progressBar.setProgress(floatPercentsToProgress(percent));
+                mBinding.progressBar.setCurrentProgress(floatPercentsToProgress(percent));
 
                 final WorkInfo.State workInfoState = workInfo.getState();
 
@@ -195,78 +192,8 @@ public class DemoActivity extends AppCompatActivity {
         });
     }
 
-    private WorkState workStateToEnum(@NonNull final Operation.State state) {
-        return null;
-    }
-
-
-    private void downloadFileOld(final String sourceUrl) {
-
-        Observable.create(new ObservableOnSubscribe<Double>() {
-                    @Override
-                    public void subscribe(ObservableEmitter<Double> emitter) throws Exception {
-
-                        mDownloadingIsActive.set(true);
-
-                        final File targetFile = new File(getCacheDir(), "downloaded.file");
-
-                        mOkHttpFileDownloader = OkHttpFileDownloader.create(targetFile);
-
-                        mOkHttpFileDownloader.setProgressCallback(new ProgressCallback() {
-                            @Override
-                            public void onProgress(long bytes, long total, float percent) {
-                                Log.d(TAG, "onProgress() called with: bytes = [" + bytes + "], total = [" + total + "], percent = [" + percent + "]");
-                                mBinding.progressBar.setProgress((int) (percent));
-                                mBinding.loadedBytesView.setText(ByteSizeConverter.humanReadableByteCountSI(bytes));
-                            }
-
-                            @Override
-                            public void onComplete() {
-                                emitter.onComplete();
-                            }
-                        });
-
-                        mOkHttpFileDownloader.download(sourceUrl);
-                    }
-                })
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Observer<Double>() {
-                    @Override
-                    public void onSubscribe(Disposable d) {
-                        mCompositeDisposable.add(d);
-                        displayBusyState();
-                    }
-
-                    @Override
-                    public void onNext(Double aDouble) {
-//                                        mBinding.progressBar.setProgress((int) (aDouble * 100.0));
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        mDownloadingIsActive.set(false);
-                        displayErrorState(e);
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        mDownloadingIsActive.set(false);
-                        mBinding.getRoot().postDelayed(() -> displayIdleState(), 1000);
-                    }
-                });
-    }
-
 
     private void downloadFileNew(final String sourceUrl) {
-
-        /*Timer timer = new Timer();
-        timer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-
-            }
-        },0,1000);*/
 
         Observable.create(new ObservableOnSubscribe<DownloadingProgress>() {
                     @Override
@@ -276,7 +203,7 @@ public class DemoActivity extends AppCompatActivity {
 
                         final File targetFile = new File(getCacheDir(), "downloaded.file");
 
-                        mOkHttpFileDownloader = OkHttpFileDownloader.create(targetFile);
+                        mOkHttpFileDownloader = OkHttpFileDownloader.create();
 
                         mOkHttpFileDownloader.setProgressCallback(new ProgressCallback() {
                             @Override
@@ -308,73 +235,8 @@ public class DemoActivity extends AppCompatActivity {
 
                     @Override
                     public void onNext(DownloadingProgress downloadingProgress) {
-                        mBinding.progressBar.setProgress(floatPercentsToProgress(downloadingProgress.percent));
+                        mBinding.progressBar.setCurrentProgress(floatPercentsToProgress(downloadingProgress.percent));
                         mBinding.loadedBytesView.setText(ByteSizeConverter.humanReadableByteCountSI(downloadingProgress.loadedBytes));
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        mDownloadingIsActive.set(false);
-                        displayErrorState(e);
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        mDownloadingIsActive.set(false);
-                        mBinding.getRoot().postDelayed(() -> displayIdleState(), 1000);
-
-                        final int count = DownloadingProgress.counter;
-                        Toast.makeText(DemoActivity.this, "count="+count, Toast.LENGTH_SHORT).show();
-                        Log.d(TAG, "count="+count);
-                    }
-                });
-    }
-
-
-    private void downloadFileNew2(String sourceUrl) {
-
-        Observable.create(new ObservableOnSubscribe<Float>() {
-                    @Override
-                    public void subscribe(ObservableEmitter<Float> emitter) throws Exception {
-
-                        mDownloadingIsActive.set(true);
-
-                        final File targetFile = new File(getCacheDir(), "downloaded.file");
-
-                        mOkHttpFileDownloader = OkHttpFileDownloader.create(targetFile);
-
-                        mOkHttpFileDownloader.setProgressCallback(new ProgressCallback() {
-                            @Override
-                            public void onProgress(long bytes, long total, float percent) {
-                                Log.d(TAG, "onProgress() called with: bytes = [" + bytes + "], total = [" + total + "], percent = [" + percent + "]");
-                                emitter.onNext(percent);
-                            }
-
-                            @Override
-                            public void onComplete() {
-                                emitter.onComplete();
-                            }
-                        });
-
-                        DownloadingProgress.resetCounter();
-
-                        mOkHttpFileDownloader.download(sourceUrl);
-                    }
-                })
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-
-                .subscribe(new Observer<Float>() {
-                    @Override
-                    public void onSubscribe(Disposable d) {
-                        mCompositeDisposable.add(d);
-                        displayBusyState();
-                    }
-
-                    @Override
-                    public void onNext(Float percent) {
-                        mBinding.progressBar.setProgress(floatPercentsToProgress(percent));
-                        mBinding.loadedBytesView.setText(percent +"%");
                     }
 
                     @Override
@@ -398,9 +260,15 @@ public class DemoActivity extends AppCompatActivity {
 
     private void displayIdleState() {
         hideError();
-        hideProgressWidgets();
+//        hideProgressWidgets();
+        changeProgressToIdle();
         hideImage();
     }
+
+    private void changeProgressToIdle() {
+        DownloadButtonProgress progressBar = mBinding.progressBar;
+    }
+
 
     private void displayBusyState() {
         hideError();
@@ -414,7 +282,7 @@ public class DemoActivity extends AppCompatActivity {
         showImage(imageFile);
     }
 
-    private void displayErrorState(Throwable t) {
+    private void displayErrorState(@NonNull Throwable t) {
         displayErrorState(t.getMessage());
         Log.e(TAG, t.getMessage(), t);
     }
@@ -426,10 +294,10 @@ public class DemoActivity extends AppCompatActivity {
     }
 
 
-    private void show(View view) {
+    private void show(@NonNull View view) {
         view.setVisibility(View.VISIBLE);
     }
-    private void hide(View view) {
+    private void hide(@NonNull View view) {
         view.setVisibility(View.GONE);
     }
 
@@ -438,13 +306,13 @@ public class DemoActivity extends AppCompatActivity {
         show(mBinding.loadedBytesView);
     }
     private void hideProgressWidgets() {
-        mBinding.progressBar.setProgress(0);
+        mBinding.progressBar.setCurrentProgress(0);
         mBinding.loadedBytesView.setText("");
         hide(mBinding.progressBar);
         hide(mBinding.loadedBytesView);
     }
 
-    private void showImage(File imageFile) {
+    private void showImage(@NonNull File imageFile) {
         Bitmap myBitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
         mBinding.imageView.setImageBitmap(myBitmap);
         show(mBinding.imageView);

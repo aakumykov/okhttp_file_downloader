@@ -66,15 +66,12 @@
         android:layout_weight="0"
         android:text="Скачать через Worker" />
 
-    <ProgressBar
+    <com.github.abdularis.buttonprogress.DownloadButtonProgress
         android:id="@+id/progressBar"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:max="100"
-        android:progress="0"
-        android:visibility="gone"
-        tools:visibility="visible" />
+        android:layout_width="45dp"
+        android:layout_height="45dp"
+        android:layout_gravity="center_horizontal"
+        app:maxProgress="100"/>
 
     <TextView
         android:id="@+id/loadedBytesView"

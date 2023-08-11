@@ -42,6 +42,7 @@ public class FileDownloadingWorker extends Worker {
     public Result doWork() {
 
         final String sourceURL = getInputData().getString(SOURCE_URL);
+
         if (null == sourceURL) {
             final String errorMsg = "Source url is null";
             return Result.failure(errorData(new IllegalArgumentException(errorMsg)));
@@ -50,7 +51,7 @@ public class FileDownloadingWorker extends Worker {
         try {
             final File targetFile = File.createTempFile(TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX);
 
-            OkHttpFileDownloader okHttpFileDownloader = OkHttpFileDownloader.create(targetFile);
+            OkHttpFileDownloader okHttpFileDownloader = OkHttpFileDownloader.create();
 
             okHttpFileDownloader.setProgressCallback(new ProgressCallback() {
                 @Override
