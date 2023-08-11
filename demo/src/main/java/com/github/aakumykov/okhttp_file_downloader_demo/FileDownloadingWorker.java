@@ -23,6 +23,8 @@ public class FileDownloadingWorker extends Worker {
 
     public static final String SOURCE_URL = "SOURCE_URL";
     public static final String PROGRESS = "PROGRESS";
+    public static final String LOADED_BYTES = "LOADED_BYTES";
+    public static final String TOTAL_BYTES = "TOTAL_BYTES";
     public static final String DOWNLOADED_FILE_PATH = "DOWNLOADED_FILE_PATH";
     public static final String ERROR_MESSAGE = "ERROR_MESSAGE";
 
@@ -57,7 +59,7 @@ public class FileDownloadingWorker extends Worker {
                 @Override
                 public void onProgress(long bytes, long total, float percent) {
                     Log.d(TAG, "onProgress: "+percent);
-                    setProgressAsync(progressData(percent));
+                    setProgressAsync(progressData(percent, bytes, total));
                 }
 
                 @Override
@@ -76,9 +78,11 @@ public class FileDownloadingWorker extends Worker {
         }
     }
 
-    private Data progressData(final float percent) {
+    private Data progressData(final float percent, final long loadedBytes, final long totalBytes) {
         return mProgressDataBuilder
                 .putFloat(PROGRESS, percent)
+                .putLong(LOADED_BYTES, loadedBytes)
+                .putLong(TOTAL_BYTES, totalBytes)
                 .build();
     }
 

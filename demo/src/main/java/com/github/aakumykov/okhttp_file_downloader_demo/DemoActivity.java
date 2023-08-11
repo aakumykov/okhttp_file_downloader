@@ -25,7 +25,6 @@ import com.github.aakumykov.enum_utils.EnumUtils;
 import com.github.aakumykov.okhttp_file_downloader.OkHttpFileDownloader;
 import com.github.aakumykov.okhttp_file_downloader.ProgressCallback;
 import com.github.aakumykov.okhttp_file_downloader_demo.databinding.ActivityDemoBinding;
-import com.github.abdularis.buttonprogress.DownloadButtonProgress;
 
 import java.io.File;
 import java.util.UUID;
@@ -111,7 +110,72 @@ public class DemoActivity extends AppCompatActivity {
         if (withWorker)
             downloadWithWorker();
         else
-            downloadFileNew(sourceUrl);
+            downloadWithRxJava(sourceUrl);
+    }
+
+
+    private void downloadWithRxJava(final String sourceUrl) {
+
+        Observable.create(new ObservableOnSubscribe<DownloadingProgress>() {
+                    @Override
+                    public void subscribe(ObservableEmitter<DownloadingProgress> emitter) throws Exception {
+
+                        mDownloadingIsActive.set(true);
+
+                        final File targetFile = new File(getCacheDir(), "downloaded.file");
+
+                        mOkHttpFileDownloader = OkHttpFileDownloader.create();
+
+                        mOkHttpFileDownloader.setProgressCallback(new ProgressCallback() {
+                            @Override
+                            public void onProgress(long bytes, long total, float percent) {
+//                                Log.d(TAG, "onProgress() called with: bytes = [" + bytes + "], total = [" + total + "], percent = [" + percent + "]");
+                                emitter.onNext(new DownloadingProgress(bytes, total, percent));
+                            }
+
+                            @Override
+                            public void onComplete() {
+                                emitter.onComplete();
+                            }
+                        });
+
+                        DownloadingProgress.resetCounter();
+
+                        mOkHttpFileDownloader.download(sourceUrl);
+                    }
+                })
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+
+                .subscribe(new Observer<DownloadingProgress>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+                        mCompositeDisposable.add(d);
+                        displayBusyState();
+                    }
+
+                    @Override
+                    public void onNext(DownloadingProgress downloadingProgress) {
+                        displayProgressInBar(floatPercentsToProgress(downloadingProgress.percent));
+                        displayProgressAsText((int) downloadingProgress.loadedBytes);
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        mDownloadingIsActive.set(false);
+                        displayErrorState(e);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        mDownloadingIsActive.set(false);
+                        mBinding.getRoot().postDelayed(() -> displayIdleState(), 1000);
+
+                        final int count = DownloadingProgress.counter;
+                        Toast.makeText(DemoActivity.this, "count="+count, Toast.LENGTH_SHORT).show();
+                        Log.d(TAG, "count="+count);
+                    }
+                });
     }
 
 
@@ -161,13 +225,8 @@ public class DemoActivity extends AppCompatActivity {
                     return;
                 }
 
-                final Data progressData = workInfo.getProgress();
-                final float percent = progressData.getFloat(FileDownloadingWorker.PROGRESS, 0f);
-                mBinding.progressBar.setCurrentProgress(floatPercentsToProgress(percent));
-
                 final WorkInfo.State workInfoState = workInfo.getState();
-
-                Log.d(TAG, "workInfoState: "+workInfoState+", percent: "+percent);
+//                Log.d(TAG, "workInfoState: "+workInfoState+", percent: "+percent);
 
                 switch (workInfoState) {
                     case ENQUEUED:
@@ -176,15 +235,26 @@ public class DemoActivity extends AppCompatActivity {
                     case SUCCEEDED:
                         displayIdleState();
                         break;
+
                     case RUNNING:
+                        final Data progressData = workInfo.getProgress();
+                        final float percent = progressData.getFloat(FileDownloadingWorker.PROGRESS, 0F);
+                        final long loadedBytes = progressData.getLong(FileDownloadingWorker.LOADED_BYTES, 0L);
+
+                        Log.d(TAG, "percent: "+percent+", loadedBytes: "+loadedBytes);
+
                         displayBusyState();
+                        displayProgressInBar(floatPercentsToProgress(percent));
+                        displayProgressAsText(loadedBytes);
                         break;
+
                     case FAILED:
                         final Data errorData = workInfo.getOutputData();
                         final String errorMessage = errorData.getString(FileDownloadingWorker.ERROR_MESSAGE);
                         displayErrorState(errorMessage);
                         Log.e(TAG, "Ошибка скачивания файла:"+errorMessage);
                         break;
+
                     default:
                         EnumUtils.throwUnknownValue(workInfoState);
                 }
@@ -193,80 +263,12 @@ public class DemoActivity extends AppCompatActivity {
     }
 
 
-    private void downloadFileNew(final String sourceUrl) {
-
-        Observable.create(new ObservableOnSubscribe<DownloadingProgress>() {
-                    @Override
-                    public void subscribe(ObservableEmitter<DownloadingProgress> emitter) throws Exception {
-
-                        mDownloadingIsActive.set(true);
-
-                        final File targetFile = new File(getCacheDir(), "downloaded.file");
-
-                        mOkHttpFileDownloader = OkHttpFileDownloader.create();
-
-                        mOkHttpFileDownloader.setProgressCallback(new ProgressCallback() {
-                            @Override
-                            public void onProgress(long bytes, long total, float percent) {
-                                Log.d(TAG, "onProgress() called with: bytes = [" + bytes + "], total = [" + total + "], percent = [" + percent + "]");
-                                emitter.onNext(new DownloadingProgress(bytes, total, percent));
-                            }
-
-                            @Override
-                            public void onComplete() {
-                                emitter.onComplete();
-                            }
-                        });
-
-                        DownloadingProgress.resetCounter();
-
-                        mOkHttpFileDownloader.download(sourceUrl);
-                    }
-                })
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-
-                .subscribe(new Observer<DownloadingProgress>() {
-                    @Override
-                    public void onSubscribe(Disposable d) {
-                        mCompositeDisposable.add(d);
-                        displayBusyState();
-                    }
-
-                    @Override
-                    public void onNext(DownloadingProgress downloadingProgress) {
-                        mBinding.progressBar.setCurrentProgress(floatPercentsToProgress(downloadingProgress.percent));
-                        mBinding.loadedBytesView.setText(ByteSizeConverter.humanReadableByteCountSI(downloadingProgress.loadedBytes));
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        mDownloadingIsActive.set(false);
-                        displayErrorState(e);
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        mDownloadingIsActive.set(false);
-                        mBinding.getRoot().postDelayed(() -> displayIdleState(), 1000);
-
-                        final int count = DownloadingProgress.counter;
-                        Toast.makeText(DemoActivity.this, "count="+count, Toast.LENGTH_SHORT).show();
-                        Log.d(TAG, "count="+count);
-                    }
-                });
-    }
-
 
     private void displayIdleState() {
         hideError();
-//        hideProgressWidgets();
-        changeProgressToIdle();
+        hideProgressWidgets();
+        mBinding.progressBar.setIdle();
         hideImage();
-    }
-
-    private void changeProgressToIdle() {
-        DownloadButtonProgress progressBar = mBinding.progressBar;
     }
 
 
@@ -294,6 +296,15 @@ public class DemoActivity extends AppCompatActivity {
     }
 
 
+    private void displayProgressInBar(int progress) {
+        mBinding.progressBar.setCurrentProgress(progress);
+    }
+
+    private void displayProgressAsText(long loadedBytes) {
+        mBinding.loadedBytesView.setText(ByteSizeConverter.humanReadableByteCountSI(loadedBytes));
+    }
+
+
     private void show(@NonNull View view) {
         view.setVisibility(View.VISIBLE);
     }
@@ -302,14 +313,16 @@ public class DemoActivity extends AppCompatActivity {
     }
 
     private void showProgressWidgets() {
-        show(mBinding.progressBar);
+//        show(mBinding.progressBar);
         show(mBinding.loadedBytesView);
+        mBinding.progressBar.setDeterminate();
     }
     private void hideProgressWidgets() {
-        mBinding.progressBar.setCurrentProgress(0);
-        mBinding.loadedBytesView.setText("");
-        hide(mBinding.progressBar);
+//        mBinding.progressBar.setCurrentProgress(0);
+//        mBinding.loadedBytesView.setText("");
+//        hide(mBinding.progressBar);
         hide(mBinding.loadedBytesView);
+        mBinding.progressBar.setIdle();
     }
 
     private void showImage(@NonNull File imageFile) {
