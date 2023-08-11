@@ -62,14 +62,19 @@ public class DemoActivity extends AppCompatActivity {
         editTextValuePersistingHelper.addFieldToPersistText(KEY_URL, mBinding.urlInput);
 
         mBinding.clearInputButton.setOnClickListener(v -> clearInputField());
+
         mBinding.downloadButton.setOnClickListener(v -> downloadFile(false));
-        mBinding.downloadWithWorkerButton.setOnClickListener(v -> downloadFile(true));
         mBinding.cancelDownloadButton.setOnClickListener(v -> cancelDownloading());
+
+        mBinding.downloadWithWorkerButton.setOnClickListener(v -> downloadFile(true));
+        mBinding.cancelDownloadingWithWorkerButton.setOnClickListener(v -> cancelDownloadingWithWorker());
 
         mBinding.clipboardButton.setOnClickListener(v -> {
             final String text = clipboardText().toString();
-            if (!TextUtils.isEmpty(text))
+            if (!TextUtils.isEmpty(text)) {
                 mBinding.urlInput.setText(text);
+                mBinding.urlInput.setSelection(text.length());
+            }
         });
     }
 
@@ -82,6 +87,17 @@ public class DemoActivity extends AppCompatActivity {
     private void cancelDownloading() {
         if (null != mOkHttpFileDownloader)
             mOkHttpFileDownloader.stopDownloading();
+    }
+
+    private void cancelDownloadingWithWorker() {
+
+        final String sourceUrl = mBinding.urlInput.getText().toString();
+        if (TextUtils.isEmpty(sourceUrl.trim())) {
+            showError(R.string.ERROR_there_is_no_image_url);
+            return;
+        }
+
+        workManager().cancelUniqueWork(sourceUrl);
     }
 
     private void clearInputField() {
@@ -194,9 +210,7 @@ public class DemoActivity extends AppCompatActivity {
 
         final UUID workId = oneTimeWorkRequest.getId();
 
-        final WorkManager wm = WorkManager.getInstance(this);
-
-        wm.enqueueUniqueWork(
+        workManager().enqueueUniqueWork(
                 sourceURL,
                 ExistingWorkPolicy.KEEP,
                 oneTimeWorkRequest)
@@ -216,7 +230,7 @@ public class DemoActivity extends AppCompatActivity {
                     }
                 })*/;
 
-        wm.getWorkInfoByIdLiveData(workId).observe(this, new androidx.lifecycle.Observer<WorkInfo>() {
+        workManager().getWorkInfoByIdLiveData(workId).observe(this, new androidx.lifecycle.Observer<WorkInfo>() {
             @Override
             public void onChanged(WorkInfo workInfo) {
 
@@ -227,6 +241,8 @@ public class DemoActivity extends AppCompatActivity {
 
                 final WorkInfo.State workInfoState = workInfo.getState();
 //                Log.d(TAG, "workInfoState: "+workInfoState+", percent: "+percent);
+
+                displayWorkState(workInfoState);
 
                 switch (workInfoState) {
                     case ENQUEUED:
@@ -262,6 +278,13 @@ public class DemoActivity extends AppCompatActivity {
         });
     }
 
+    private void displayWorkState(WorkInfo.State workInfoState) {
+        mBinding.workStateView.setText(workInfoState.name());
+    }
+
+    private WorkManager workManager() {
+        return WorkManager.getInstance(this);
+    }
 
 
     private void displayIdleState() {
