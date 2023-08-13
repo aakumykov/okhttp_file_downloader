@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.work.Data;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
@@ -16,6 +17,8 @@ import com.gitlab.aakumykov.exception_utils_module.ExceptionUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class FileDownloadingWorker extends Worker {
 
@@ -32,6 +35,10 @@ public class FileDownloadingWorker extends Worker {
     private static final String TEMP_FILE_SUFFIX = ".file";
 
     private final Data.Builder mProgressDataBuilder;
+    @Nullable private Timer mTimer;
+    private long mLoadedBytes = 0L;
+    private long mTotalBytes = 0L;
+    private float mProgressPercent = 0f;
 
 
     public FileDownloadingWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
@@ -51,6 +58,14 @@ public class FileDownloadingWorker extends Worker {
         }
 
         try {
+            mTimer = new Timer();
+            mTimer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    setProgressAsync(progressData(mProgressPercent,mLoadedBytes,mTotalBytes));
+                }
+            }, 0, 1000);
+
             final File targetFile = File.createTempFile(TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX);
 
             OkHttpFileDownloader okHttpFileDownloader = OkHttpFileDownloader.create();
@@ -58,8 +73,9 @@ public class FileDownloadingWorker extends Worker {
             okHttpFileDownloader.setProgressCallback(new ProgressCallback() {
                 @Override
                 public void onProgress(long bytes, long total, float percent) {
-                    Log.d(TAG, "onProgress: "+percent);
-                    setProgressAsync(progressData(percent, bytes, total));
+                    mProgressPercent = percent;
+                    mLoadedBytes = bytes;
+                    mTotalBytes = total;
                 }
 
                 @Override
@@ -79,6 +95,7 @@ public class FileDownloadingWorker extends Worker {
     }
 
     private Data progressData(final float percent, final long loadedBytes, final long totalBytes) {
+        Log.d(TAG, "progressData() called with: percent = [" + percent + "], loadedBytes = [" + loadedBytes + "], totalBytes = [" + totalBytes + "]");
         return mProgressDataBuilder
                 .putFloat(PROGRESS, percent)
                 .putLong(LOADED_BYTES, loadedBytes)
@@ -96,5 +113,12 @@ public class FileDownloadingWorker extends Worker {
         return new Data.Builder()
                 .putString(ERROR_MESSAGE, ExceptionUtils.getErrorMessage(e))
                 .build();
+    }
+
+    @Override
+    public void onStopped() {
+        super.onStopped();
+        if (null != mTimer)
+            mTimer.purge();
     }
 }
